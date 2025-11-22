@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Mail, Phone, MessageSquare, ChevronLeft, Check } from 'lucide-react';
+import { Calendar, Clock, User, Mail, Phone, MessageSquare, ChevronLeft, Check, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { sendBookingEmail } from '../lib/emailService';
-import { Service, Booking as BookingType } from '../types';
+import { Service, ServiceCategory, Booking as BookingType } from '../types';
 
 interface BookingProps {
   preSelectedService?: Service;
@@ -12,6 +12,8 @@ interface BookingProps {
 export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   const [step, setStep] = useState(1);
   const [services, setServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedService, setSelectedService] = useState<Service | null>(preSelectedService || null);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
@@ -27,7 +29,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   const [bookingComplete, setBookingComplete] = useState(false);
 
   useEffect(() => {
-    loadServices();
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -36,14 +38,14 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     }
   }, [selectedDate, selectedService]);
 
-  const loadServices = async () => {
-    const { data } = await supabase
-      .from('services')
-      .select('*')
-      .eq('is_active', true)
-      .order('display_order');
+  const loadData = async () => {
+    const [servicesResult, categoriesResult] = await Promise.all([
+      supabase.from('services').select('*').eq('is_active', true).order('display_order'),
+      supabase.from('service_categories').select('*').order('display_order'),
+    ]);
 
-    if (data) setServices(data);
+    if (servicesResult.data) setServices(servicesResult.data);
+    if (categoriesResult.data) setCategories(categoriesResult.data);
   };
 
   const loadAvailableSlots = async () => {
@@ -157,6 +159,13 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     setIsSubmitting(false);
   };
 
+  const getServicesByCategory = (categoryId: string) => {
+    return services.filter((s) => s.category_id === categoryId);
+  };
+
+  const filteredServices =
+    selectedCategory === 'all' ? services : services.filter((s) => s.category_id === selectedCategory);
+
   const minDate = new Date().toISOString().split('T')[0];
   const maxDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -195,7 +204,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
 
   return (
     <div className="min-h-screen pt-32 pb-20">
-      <div className="container mx-auto px-4 max-w-4xl">
+      <div className="container mx-auto px-4 max-w-6xl">
         <div className="mb-8">
           <button
             onClick={() => step === 1 ? onNavigate('home') : setStep(step - 1)}
@@ -209,9 +218,9 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
           <div className="bg-gradient-to-r from-[#264025] to-[#7B4B36] p-8 text-white">
             <h1 className="text-4xl font-bold mb-4">Book Your Appointment</h1>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 overflow-x-auto pb-2">
               {[1, 2, 3, 4].map((s) => (
-                <div key={s} className="flex items-center">
+                <div key={s} className="flex items-center flex-shrink-0">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
                       step >= s ? 'bg-[#AD6B4B]' : 'bg-white/20'
@@ -225,32 +234,86 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
             </div>
           </div>
 
-          <div className="p-8">
+          <div className="p-6 md:p-8">
             {step === 1 && (
               <div>
                 <h2 className="text-2xl font-bold text-[#264025] mb-6">Select a Service</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto">
-                  {services.map((service) => (
-                    <div
-                      key={service.id}
-                      onClick={() => {
-                        setSelectedService(service);
-                        setStep(2);
-                      }}
-                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:shadow-lg ${
-                        selectedService?.id === service.id
-                          ? 'border-[#AD6B4B] bg-[#DDCBB7]/20'
-                          : 'border-[#DDCBB7] hover:border-[#AD6B4B]'
-                      }`}
-                    >
-                      <h3 className="font-bold text-[#264025] mb-2">{service.name}</h3>
-                      <div className="flex items-center justify-between text-sm text-[#82896E]">
-                        <span>{service.duration_minutes} mins</span>
-                        <span className="font-bold text-[#AD6B4B]">₹{service.price}</span>
-                      </div>
-                    </div>
-                  ))}
+
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-[#264025] mb-2">
+                    Filter by Category
+                  </label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300"
+                  >
+                    <option value="all">All Services</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
+                {selectedCategory === 'all' ? (
+                  <div className="space-y-6 max-h-[500px] overflow-y-auto">
+                    {categories.map((category) => {
+                      const categoryServices = getServicesByCategory(category.id);
+                      if (categoryServices.length === 0) return null;
+
+                      return (
+                        <div key={category.id} className="border-2 border-[#DDCBB7] rounded-xl overflow-hidden">
+                          <div className="bg-[#DDCBB7] px-4 py-3">
+                            <h3 className="font-bold text-[#264025]">{category.name}</h3>
+                          </div>
+                          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {categoryServices.map((service) => (
+                              <div
+                                key={service.id}
+                                onClick={() => {
+                                  setSelectedService(service);
+                                  setStep(2);
+                                }}
+                                className="p-4 rounded-lg border-2 border-[#DDCBB7] hover:border-[#AD6B4B] cursor-pointer transition-all duration-300 hover:shadow-lg bg-white"
+                              >
+                                <h4 className="font-bold text-[#264025] mb-2">{service.name}</h4>
+                                <div className="flex items-center justify-between text-sm text-[#82896E]">
+                                  <span>{service.duration_minutes} mins</span>
+                                  <span className="font-bold text-[#AD6B4B]">₹{service.price}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto">
+                    {filteredServices.map((service) => (
+                      <div
+                        key={service.id}
+                        onClick={() => {
+                          setSelectedService(service);
+                          setStep(2);
+                        }}
+                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:shadow-lg ${
+                          selectedService?.id === service.id
+                            ? 'border-[#AD6B4B] bg-[#DDCBB7]/20'
+                            : 'border-[#DDCBB7] hover:border-[#AD6B4B]'
+                        }`}
+                      >
+                        <h3 className="font-bold text-[#264025] mb-2">{service.name}</h3>
+                        <div className="flex items-center justify-between text-sm text-[#82896E]">
+                          <span>{service.duration_minutes} mins</span>
+                          <span className="font-bold text-[#AD6B4B]">₹{service.price}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -288,7 +351,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                     {new Date(selectedDate).toLocaleDateString()} • {selectedService?.duration_minutes} minutes
                   </p>
                 </div>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto">
                   {availableSlots.map((slot) => {
                     const available = isSlotAvailable(slot);
                     return (
