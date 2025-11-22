@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, User, Mail, Phone, MessageSquare, ChevronLeft, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { sendBookingEmail } from '../lib/emailService';
 import { Service, Booking as BookingType } from '../types';
 
 interface BookingProps {
@@ -136,11 +137,24 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
       notes: formData.notes,
     });
 
-    setIsSubmitting(false);
-
     if (!error) {
+      await sendBookingEmail({
+        customerName: formData.name,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        serviceName: selectedService.name,
+        bookingDate: selectedDate,
+        startTime: selectedTime,
+        duration: selectedService.duration_minutes,
+        price: selectedService.price,
+        notes: formData.notes,
+        status: 'pending',
+      });
+
       setBookingComplete(true);
     }
+
+    setIsSubmitting(false);
   };
 
   const minDate = new Date().toISOString().split('T')[0];

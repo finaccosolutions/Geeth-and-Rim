@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Check, X, Eye, Calendar as CalendarIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { sendBookingEmail } from '../../lib/emailService';
 import { Booking, Service } from '../../types';
 
 export const BookingsManager = () => {
@@ -38,10 +39,27 @@ export const BookingsManager = () => {
   };
 
   const updateBookingStatus = async (bookingId: string, status: string) => {
+    const booking = bookings.find(b => b.id === bookingId);
+
     await supabase
       .from('bookings')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', bookingId);
+
+    if (booking && (status === 'confirmed' || status === 'cancelled')) {
+      await sendBookingEmail({
+        customerName: booking.customer_name,
+        customerEmail: booking.customer_email,
+        customerPhone: booking.customer_phone,
+        serviceName: booking.service?.name || 'Service',
+        bookingDate: booking.booking_date,
+        startTime: booking.start_time,
+        duration: booking.service?.duration_minutes || 0,
+        price: booking.service?.price || 0,
+        notes: booking.notes,
+        status: status,
+      });
+    }
 
     loadBookings();
     setSelectedBooking(null);
