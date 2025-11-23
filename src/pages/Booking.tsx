@@ -282,20 +282,33 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
       <div className="mb-6">
         <h3 className="text-lg font-bold text-[#264025] mb-4">Visual Timeline - Available Times</h3>
 
-        <div className="bg-white border-2 border-[#DDCBB7] rounded-xl p-4">
-          <div className="relative h-24 bg-gradient-to-r from-green-50 to-green-100 rounded-lg overflow-hidden">
+        <div className="bg-white border-2 border-[#DDCBB7] rounded-xl p-6 pb-4">
+          <div className="relative h-32 bg-gradient-to-r from-green-50 to-green-100 rounded-lg overflow-visible mb-8">
             <div className="absolute inset-0 flex">
-              {hours.map((hour, index) => (
-                <div
-                  key={hour}
-                  className="flex-1 border-r border-gray-300 last:border-r-0 relative"
-                  style={{ minWidth: '60px' }}
-                >
-                  <div className="absolute -bottom-6 left-0 text-xs font-medium text-gray-600 transform -translate-x-1/2">
-                    {hour.toString().padStart(2, '0')}:00
+              {hours.map((hour) => {
+                const hourMinutes = hour * 60;
+                const left = ((hourMinutes - openMinutes) / totalMinutes) * 100;
+
+                return (
+                  <div
+                    key={hour}
+                    className="absolute top-0 bottom-0 border-l-2 border-gray-300"
+                    style={{ left: `${left}%` }}
+                  >
+                    <div className="absolute -bottom-8 left-0 text-sm font-semibold text-gray-700 transform -translate-x-1/2 whitespace-nowrap">
+                      {hour.toString().padStart(2, '0')}:00
+                    </div>
                   </div>
+                );
+              })}
+              <div
+                className="absolute top-0 bottom-0 border-l-2 border-gray-300"
+                style={{ left: '100%' }}
+              >
+                <div className="absolute -bottom-8 left-0 text-sm font-semibold text-gray-700 transform -translate-x-1/2 whitespace-nowrap">
+                  {Math.floor(closeMinutes / 60).toString().padStart(2, '0')}:00
                 </div>
-              ))}
+              </div>
             </div>
 
             {existingBookings.map((booking, index) => {
@@ -306,20 +319,21 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
 
               return (
                 <div
-                  key={index}
-                  className={`absolute top-2 bottom-2 ${
-                    booking.type === 'blocked' ? 'bg-gray-400' : 'bg-red-500'
-                  } rounded shadow-lg border-2 border-white transition-all hover:scale-105 hover:z-10 cursor-pointer group`}
+                  key={`${booking.type}-${index}`}
+                  className={`absolute top-3 bottom-3 ${
+                    booking.type === 'blocked' ? 'bg-gray-500' : 'bg-red-500'
+                  } rounded shadow-lg border-2 border-white transition-all hover:scale-y-110 hover:z-10 cursor-pointer group`}
                   style={{
                     left: `${left}%`,
-                    width: `${width}%`,
+                    width: `${Math.max(width, 0.5)}%`,
+                    minWidth: '2px',
                   }}
-                  title={booking.type === 'blocked' ? booking.reason : `Booked: ${booking.start_time} - ${booking.end_time}`}
+                  title={booking.type === 'blocked' ? `Blocked: ${booking.reason || 'No reason'}` : `Booked: ${booking.start_time.substring(0, 5)} - ${booking.end_time.substring(0, 5)}`}
                 >
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded">
-                    <div>{booking.start_time}</div>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 rounded px-1">
+                    <div>{booking.start_time.substring(0, 5)}</div>
                     <div>-</div>
-                    <div>{booking.end_time}</div>
+                    <div>{booking.end_time.substring(0, 5)}</div>
                   </div>
                 </div>
               );
@@ -327,10 +341,11 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
 
             {manualTimeInput && isTimeAvailable(manualTimeInput) && selectedService && (
               <div
-                className="absolute top-1 bottom-1 bg-blue-500 bg-opacity-60 border-2 border-blue-700 rounded shadow-lg animate-pulse"
+                className="absolute top-2 bottom-2 bg-blue-500 bg-opacity-70 border-2 border-blue-700 rounded shadow-lg animate-pulse z-20"
                 style={{
                   left: `${((timeToMinutes(manualTimeInput) - openMinutes) / totalMinutes) * 100}%`,
                   width: `${(selectedService.duration_minutes / totalMinutes) * 100}%`,
+                  minWidth: '3px',
                 }}
               >
                 <div className="flex items-center justify-center h-full text-white text-xs font-bold">
@@ -340,42 +355,54 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
             )}
           </div>
 
-          <div className="mt-8 flex items-center justify-center space-x-6 text-sm">
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-4 text-sm">
             <div className="flex items-center space-x-2">
               <div className="w-6 h-6 bg-green-100 border-2 border-green-500 rounded"></div>
-              <span className="text-gray-700">Available</span>
+              <span className="text-gray-700 font-medium">Available</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-6 h-6 bg-red-500 rounded"></div>
-              <span className="text-gray-700">Booked</span>
+              <span className="text-gray-700 font-medium">Booked</span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-gray-400 rounded"></div>
-              <span className="text-gray-700">Blocked</span>
+              <div className="w-6 h-6 bg-gray-500 rounded"></div>
+              <span className="text-gray-700 font-medium">Blocked</span>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-blue-500 bg-opacity-60 border-2 border-blue-700 rounded"></div>
-              <span className="text-gray-700">Your Selection</span>
+              <div className="w-6 h-6 bg-blue-500 bg-opacity-70 border-2 border-blue-700 rounded"></div>
+              <span className="text-gray-700 font-medium">Your Selection</span>
             </div>
           </div>
         </div>
 
         {existingBookings.length > 0 && (
-          <div className="mt-4 bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+          <div className="mt-4 bg-amber-50 rounded-xl p-4 border-2 border-amber-300">
             <div className="flex items-start space-x-2">
-              <AlertCircle className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
+              <AlertCircle className="text-amber-700 flex-shrink-0 mt-0.5" size={22} />
               <div className="flex-1">
-                <h4 className="font-semibold text-blue-900 mb-2">Existing Bookings on {new Date(selectedDate).toLocaleDateString()}</h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <h4 className="font-bold text-amber-900 mb-3">
+                  Already Booked Slots on {new Date(selectedDate).toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {existingBookings.map((booking, index) => (
-                    <div key={index} className={`text-sm px-3 py-2 rounded-lg ${
-                      booking.type === 'blocked'
-                        ? 'bg-gray-100 text-gray-700 border border-gray-300'
-                        : 'bg-red-100 text-red-700 border border-red-300'
-                    }`}>
-                      <div className="font-semibold">{booking.start_time} - {booking.end_time}</div>
+                    <div
+                      key={`list-${index}`}
+                      className={`text-sm px-3 py-2 rounded-lg font-semibold ${
+                        booking.type === 'blocked'
+                          ? 'bg-gray-200 text-gray-800 border-2 border-gray-400'
+                          : 'bg-red-100 text-red-800 border-2 border-red-400'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <Clock size={14} className="flex-shrink-0" />
+                        <span>{booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}</span>
+                      </div>
                       {booking.type === 'blocked' && booking.reason && (
-                        <div className="text-xs mt-1 opacity-75">{booking.reason}</div>
+                        <div className="text-xs mt-1 opacity-75 italic">{booking.reason}</div>
                       )}
                     </div>
                   ))}
