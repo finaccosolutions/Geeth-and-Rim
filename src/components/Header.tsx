@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Menu, X, User, LogOut } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Menu, X, User, LogOut, ChevronDown, Calendar, Settings } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -10,11 +10,33 @@ interface HeaderProps {
 
 export const Header = ({ currentPage, onNavigate }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [branding, setBranding] = useState({ site_name: 'Geetandrim', logo_url: null as string | null });
+  const [userName, setUserName] = useState<string>('');
   const { user, signOut } = useAuth();
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadBranding();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadUserProfile();
+    } else {
+      setUserName('');
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setIsAccountMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const loadBranding = async () => {
@@ -24,12 +46,21 @@ export const Header = ({ currentPage, onNavigate }: HeaderProps) => {
     }
   };
 
-  const handleAuthClick = () => {
-    if (user) {
-      signOut();
-    } else {
-      onNavigate('auth');
+  const loadUserProfile = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('customer_profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (data) {
+      setUserName(data.full_name);
     }
+  };
+
+  const handleLogout = () => {
+    setIsAccountMenuOpen(false);
+    signOut();
   };
 
   const navItems = [
@@ -78,22 +109,97 @@ export const Header = ({ currentPage, onNavigate }: HeaderProps) => {
                   }`}></span>
                 </button>
               ))}
-              <button
-                onClick={handleAuthClick}
-                className="flex items-center space-x-2 bg-[#C17B5C] text-white px-4 py-2 rounded-full hover:bg-[#A6684C] transition-all duration-300"
-              >
-                {user ? <LogOut size={18} /> : <User size={18} />}
-                <span>{user ? 'Logout' : 'Login'}</span>
-              </button>
+
+              {user ? (
+                <div className="relative" ref={accountMenuRef}>
+                  <button
+                    onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
+                    className="flex items-center space-x-2 bg-[#C17B5C] text-white px-4 py-2 rounded-full hover:bg-[#A6684C] transition-all duration-300"
+                  >
+                    <User size={18} />
+                    <span className="max-w-[120px] truncate">{userName || 'Account'}</span>
+                    <ChevronDown size={16} className={`transition-transform duration-300 ${
+                      isAccountMenuOpen ? 'rotate-180' : ''
+                    }`} />
+                  </button>
+
+                  {isAccountMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border-2 border-[#DDCBB7] overflow-hidden z-50">
+                      <div className="p-3 bg-gradient-to-r from-[#DDCBB7]/30 to-[#E8D5C4]/30 border-b-2 border-[#DDCBB7]">
+                        <p className="text-sm font-bold text-[#264025] truncate">{userName}</p>
+                        <p className="text-xs text-[#82896E] truncate">{user.email}</p>
+                      </div>
+                      <div className="py-2">
+                        <button
+                          onClick={() => {
+                            setIsAccountMenuOpen(false);
+                            onNavigate('account');
+                          }}
+                          className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-[#DDCBB7]/20 transition-colors text-left"
+                        >
+                          <User size={18} className="text-[#AD6B4B]" />
+                          <span className="text-[#264025] font-medium">My Profile</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsAccountMenuOpen(false);
+                            onNavigate('account');
+                          }}
+                          className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-[#DDCBB7]/20 transition-colors text-left"
+                        >
+                          <Calendar size={18} className="text-[#AD6B4B]" />
+                          <span className="text-[#264025] font-medium">My Bookings</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsAccountMenuOpen(false);
+                            onNavigate('account');
+                          }}
+                          className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-[#DDCBB7]/20 transition-colors text-left"
+                        >
+                          <Settings size={18} className="text-[#AD6B4B]" />
+                          <span className="text-[#264025] font-medium">Settings</span>
+                        </button>
+                      </div>
+                      <div className="border-t-2 border-[#DDCBB7]">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-red-50 transition-colors text-left"
+                        >
+                          <LogOut size={18} className="text-red-600" />
+                          <span className="text-red-600 font-medium">Logout</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={() => onNavigate('auth')}
+                  className="flex items-center space-x-2 bg-[#C17B5C] text-white px-4 py-2 rounded-full hover:bg-[#A6684C] transition-all duration-300"
+                >
+                  <User size={18} />
+                  <span>Login</span>
+                </button>
+              )}
             </nav>
 
             <div className="flex items-center space-x-4 lg:hidden">
-              <button
-                onClick={handleAuthClick}
-                className="text-[#3D2E1F] hover:text-[#C17B5C] transition-colors duration-300"
-              >
-                {user ? <LogOut size={24} /> : <User size={24} />}
-              </button>
+              {user ? (
+                <button
+                  onClick={() => onNavigate('account')}
+                  className="text-[#3D2E1F] hover:text-[#C17B5C] transition-colors duration-300"
+                >
+                  <User size={24} />
+                </button>
+              ) : (
+                <button
+                  onClick={() => onNavigate('auth')}
+                  className="text-[#3D2E1F] hover:text-[#C17B5C] transition-colors duration-300"
+                >
+                  <User size={24} />
+                </button>
+              )}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="text-[#3D2E1F] hover:text-[#C17B5C] transition-colors duration-300"

@@ -11,6 +11,7 @@ import { About } from './pages/About';
 import { Contact } from './pages/Contact';
 import { Booking } from './pages/Booking';
 import { Auth } from './pages/Auth';
+import { Account } from './pages/Account';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { Service } from './types';
@@ -59,6 +60,10 @@ function AppContent() {
     return <Auth onNavigate={handleNavigate} />;
   }
 
+  if (currentPage === 'account') {
+    return <Account onNavigate={handleNavigate} />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header currentPage={currentPage} onNavigate={handleNavigate} />
@@ -72,6 +77,7 @@ function AppContent() {
         {currentPage === 'booking' && (
           <Booking preSelectedService={bookingData} onNavigate={handleNavigate} />
         )}
+        {currentPage === 'account' && <Account onNavigate={handleNavigate} />}
       </main>
       <Footer />
       <WhatsAppButton />
