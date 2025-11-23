@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Mail, Phone, MessageSquare, ChevronLeft, Check } from 'lucide-react';
+import { Calendar, Clock, User, Mail, Phone, MessageSquare, ChevronLeft, Check, ChevronRight, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { sendBookingEmail } from '../lib/emailService';
-import { Service, ServiceCategory } from '../types';
+import { Service, ServiceCategory, BlockedTimeSlot } from '../types';
 
 interface BookingProps {
   preSelectedService?: Service;
   onNavigate: (page: string) => void;
+}
+
+interface TimeSlot {
+  time: string;
+  available: boolean;
+  reason?: string;
 }
 
 export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
@@ -15,9 +21,11 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedService, setSelectedService] = useState<Service | null>(preSelectedService || null);
   const [selectedDate, setSelectedDate] = useState('');
+  const [showTimeSelection, setShowTimeSelection] = useState(false);
   const [selectedTime, setSelectedTime] = useState('');
   const [existingBookings, setExistingBookings] = useState<{ start_time: string; end_time: string }[]>([]);
-  const [timeError, setTimeError] = useState('');
+  const [blockedSlots, setBlockedSlots] = useState<BlockedTimeSlot[]>([]);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const shopOpenTime = '09:00';
   const shopCloseTime = '20:00';
   const [formData, setFormData] = useState({
@@ -38,10 +46,10 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   }, []);
 
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && selectedService && showTimeSelection) {
       loadExistingBookings();
     }
-  }, [selectedDate]);
+  }, [selectedDate, selectedService, showTimeSelection]);
 
   const loadData = async () => {
     const [servicesResult, categoriesResult] = await Promise.all([
@@ -54,20 +62,35 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   };
 
   const loadExistingBookings = async () => {
-    if (!selectedDate) return;
+    if (!selectedDate || !selectedService) return;
 
-    const { data: bookings } = await supabase
-      .from('bookings')
-      .select('start_time, end_time')
-      .eq('booking_date', selectedDate)
-      .neq('status', 'cancelled')
-      .order('start_time', { ascending: true });
+    const [bookingsResult, blockedResult] = await Promise.all([
+      supabase
+        .from('bookings')
+        .select('start_time, end_time')
+        .eq('booking_date', selectedDate)
+        .neq('status', 'cancelled')
+        .order('start_time', { ascending: true }),
+      supabase
+        .from('blocked_time_slots')
+        .select('*')
+        .eq('blocked_date', selectedDate)
+        .eq('service_id', selectedService.id)
+    ]);
 
-    if (bookings) {
-      setExistingBookings(bookings);
+    if (bookingsResult.data) {
+      setExistingBookings(bookingsResult.data);
     } else {
       setExistingBookings([]);
     }
+
+    if (blockedResult.data) {
+      setBlockedSlots(blockedResult.data);
+    } else {
+      setBlockedSlots([]);
+    }
+
+    generateTimeSlots(bookingsResult.data || [], blockedResult.data || []);
   };
 
   const timeToMinutes = (time: string) => {
@@ -75,68 +98,83 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     return hours * 60 + minutes;
   };
 
+  const minutesToTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  };
+
   const calculateEndTime = (startTime: string, durationMinutes: number) => {
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = startMinutes + durationMinutes;
-    const hours = Math.floor(endMinutes / 60);
-    const minutes = endMinutes % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    return minutesToTime(endMinutes);
   };
 
-  const validateTimeSlot = (time: string): string | null => {
-    if (!selectedService) return null;
+  const generateTimeSlots = (bookings: { start_time: string; end_time: string }[], blocked: BlockedTimeSlot[]) => {
+    if (!selectedService) return;
 
-    const selectedStartMinutes = timeToMinutes(time);
-    const selectedEndMinutes = selectedStartMinutes + selectedService.duration_minutes;
-    const shopOpenMinutes = timeToMinutes(shopOpenTime);
-    const shopCloseMinutes = timeToMinutes(shopCloseTime);
+    const slots: TimeSlot[] = [];
+    const openMinutes = timeToMinutes(shopOpenTime);
+    const closeMinutes = timeToMinutes(shopCloseTime);
+    const slotInterval = 30;
 
-    if (selectedStartMinutes < shopOpenMinutes) {
-      return `Shop opens at ${shopOpenTime}. Please select a time after that.`;
-    }
+    for (let minutes = openMinutes; minutes < closeMinutes; minutes += slotInterval) {
+      const slotTime = minutesToTime(minutes);
+      const slotEndMinutes = minutes + selectedService.duration_minutes;
 
-    if (selectedEndMinutes > shopCloseMinutes) {
-      return `This appointment would end after closing time (${shopCloseTime}). Please select an earlier time.`;
-    }
+      if (slotEndMinutes > closeMinutes) {
+        break;
+      }
 
-    const hasConflict = existingBookings.some((booking) => {
-      const bookingStart = timeToMinutes(booking.start_time);
-      const bookingEnd = timeToMinutes(booking.end_time);
+      const hasBookingConflict = bookings.some((booking) => {
+        const bookingStart = timeToMinutes(booking.start_time);
+        const bookingEnd = timeToMinutes(booking.end_time);
+        return (
+          (minutes >= bookingStart && minutes < bookingEnd) ||
+          (slotEndMinutes > bookingStart && slotEndMinutes <= bookingEnd) ||
+          (minutes <= bookingStart && slotEndMinutes >= bookingEnd)
+        );
+      });
 
-      return (
-        (selectedStartMinutes >= bookingStart && selectedStartMinutes < bookingEnd) ||
-        (selectedEndMinutes > bookingStart && selectedEndMinutes <= bookingEnd) ||
-        (selectedStartMinutes <= bookingStart && selectedEndMinutes >= bookingEnd)
-      );
-    });
+      const blockedSlot = blocked.find((block) => {
+        const blockStart = timeToMinutes(block.start_time);
+        const blockEnd = timeToMinutes(block.end_time);
+        return (
+          (minutes >= blockStart && minutes < blockEnd) ||
+          (slotEndMinutes > blockStart && slotEndMinutes <= blockEnd) ||
+          (minutes <= blockStart && slotEndMinutes >= blockEnd)
+        );
+      });
 
-    if (hasConflict) {
-      return 'This time conflicts with an existing booking. Please choose a different time.';
-    }
-
-    return null;
-  };
-
-  const handleTimeChange = (time: string) => {
-    setSelectedTime(time);
-    setTimeError('');
-
-    if (time && selectedService) {
-      const error = validateTimeSlot(time);
-      if (error) {
-        setTimeError(error);
+      if (blockedSlot) {
+        slots.push({
+          time: slotTime,
+          available: false,
+          reason: blockedSlot.reason || 'Blocked by admin'
+        });
+      } else if (hasBookingConflict) {
+        slots.push({
+          time: slotTime,
+          available: false,
+          reason: 'Already booked'
+        });
+      } else {
+        slots.push({
+          time: slotTime,
+          available: true
+        });
       }
     }
+
+    setTimeSlots(slots);
+  };
+
+  const handleTimeSelect = (time: string) => {
+    setSelectedTime(time);
   };
 
   const handleSubmit = async () => {
     if (!selectedService || !selectedDate || !selectedTime) return;
-
-    const validationError = validateTimeSlot(selectedTime);
-    if (validationError) {
-      setTimeError(validationError);
-      return;
-    }
 
     setIsSubmitting(true);
 
@@ -149,12 +187,18 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         .eq('booking_date', selectedDate)
         .neq('status', 'cancelled');
 
-      const isSlotAvailable = !latestBookings?.some((booking) => {
+      const { data: latestBlocked } = await supabase
+        .from('blocked_time_slots')
+        .select('*')
+        .eq('blocked_date', selectedDate)
+        .eq('service_id', selectedService.id);
+
+      const selectedStartMinutes = timeToMinutes(selectedTime);
+      const selectedEndMinutes = selectedStartMinutes + selectedService.duration_minutes;
+
+      const hasBookingConflict = latestBookings?.some((booking) => {
         const startMinutes = timeToMinutes(booking.start_time);
         const endMinutes = timeToMinutes(booking.end_time);
-        const selectedStartMinutes = timeToMinutes(selectedTime);
-        const selectedEndMinutes = selectedStartMinutes + selectedService.duration_minutes;
-
         return (
           (selectedStartMinutes >= startMinutes && selectedStartMinutes < endMinutes) ||
           (selectedEndMinutes > startMinutes && selectedEndMinutes <= endMinutes) ||
@@ -162,10 +206,20 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         );
       });
 
-      if (!isSlotAvailable) {
-        setTimeError('Sorry, this time slot was just booked. Please select another time.');
+      const hasBlockedConflict = latestBlocked?.some((block) => {
+        const blockStart = timeToMinutes(block.start_time);
+        const blockEnd = timeToMinutes(block.end_time);
+        return (
+          (selectedStartMinutes >= blockStart && selectedStartMinutes < blockEnd) ||
+          (selectedEndMinutes > blockStart && selectedEndMinutes <= blockEnd) ||
+          (selectedStartMinutes <= blockStart && selectedEndMinutes >= blockEnd)
+        );
+      });
+
+      if (hasBookingConflict || hasBlockedConflict) {
         await loadExistingBookings();
         setIsSubmitting(false);
+        alert('Sorry, this time slot is no longer available. Please select another time.');
         return;
       }
 
@@ -182,8 +236,8 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
       });
 
       if (error) {
-        setTimeError('Booking failed. Please try again.');
         setIsSubmitting(false);
+        alert('Booking failed. Please try again.');
         return;
       }
 
@@ -203,8 +257,8 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
       setBookingComplete(true);
     } catch (error) {
       console.error('Booking error:', error);
-      setTimeError('An error occurred. Please try again.');
       setIsSubmitting(false);
+      alert('An error occurred. Please try again.');
     }
   };
 
@@ -258,6 +312,8 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
             onClick={() => {
               if (selectedTime) {
                 setSelectedTime('');
+              } else if (showTimeSelection) {
+                setShowTimeSelection(false);
               } else if (selectedDate) {
                 setSelectedDate('');
               } else if (selectedService) {
@@ -334,6 +390,9 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                                 className="p-4 rounded-lg border-2 border-[#DDCBB7] hover:border-[#AD6B4B] cursor-pointer transition-all duration-300 hover:shadow-lg bg-white"
                               >
                                 <h4 className="font-bold text-[#264025]">{service.name}</h4>
+                                <p className="text-sm text-[#82896E] mt-1">
+                                  {service.duration_minutes} min • ₹{service.price}
+                                </p>
                               </div>
                             ))}
                           </div>
@@ -350,6 +409,9 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                         className="p-4 rounded-xl border-2 border-[#DDCBB7] hover:border-[#AD6B4B] cursor-pointer transition-all duration-300 hover:shadow-lg"
                       >
                         <h3 className="font-bold text-[#264025]">{service.name}</h3>
+                        <p className="text-sm text-[#82896E] mt-1">
+                          {service.duration_minutes} min • ₹{service.price}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -357,11 +419,12 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
               </div>
             )}
 
-            {selectedService && !selectedTime && (
+            {selectedService && !showTimeSelection && !selectedTime && (
               <div>
-                <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Date & Time</h2>
+                <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Date</h2>
                 <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
                   <p className="font-semibold text-[#264025]">Selected Service: {selectedService.name}</p>
+                  <p className="text-sm text-[#82896E]">Duration: {selectedService.duration_minutes} minutes • Price: ₹{selectedService.price}</p>
                 </div>
 
                 <div className="mb-6">
@@ -377,69 +440,96 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                 </div>
 
                 {selectedDate && (
-                  <div>
-                    <div className="mb-6">
-                      <label className="block text-[#264025] font-semibold mb-2">
-                        Enter Your Preferred Time
-                      </label>
-                      <p className="text-sm text-[#82896E] mb-3">
-                        Shop hours: {shopOpenTime} - {shopCloseTime}
-                      </p>
-                      <input
-                        type="time"
-                        value={selectedTime}
-                        onChange={(e) => handleTimeChange(e.target.value)}
-                        min={shopOpenTime}
-                        max={shopCloseTime}
-                        className="w-full px-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg"
-                      />
-                      {timeError && (
-                        <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-                          {timeError}
-                        </div>
-                      )}
-                      {selectedTime && !timeError && (
-                        <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
-                          Time slot available! Your appointment will be from {selectedTime} to {calculateEndTime(selectedTime, selectedService.duration_minutes)}
-                        </div>
-                      )}
-                    </div>
+                  <button
+                    onClick={() => setShowTimeSelection(true)}
+                    className="w-full bg-[#AD6B4B] text-white px-6 py-4 rounded-full font-semibold hover:bg-[#7B4B36] transition-all duration-300 flex items-center justify-center space-x-2"
+                  >
+                    <span>Continue to Time Selection</span>
+                    <ChevronRight size={20} />
+                  </button>
+                )}
+              </div>
+            )}
 
-                    {existingBookings.length > 0 && (
-                      <div className="bg-gray-50 rounded-xl p-4">
-                        <h4 className="font-semibold text-[#264025] mb-3">Already Booked Times Today:</h4>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
+            {selectedService && selectedDate && showTimeSelection && !selectedTime && (
+              <div>
+                <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Time Slot</h2>
+                <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
+                  <p className="font-semibold text-[#264025]">{selectedService.name}</p>
+                  <p className="text-sm text-[#82896E]">
+                    {new Date(selectedDate).toLocaleDateString()} • {selectedService.duration_minutes} minutes
+                  </p>
+                </div>
+
+                <div className="mb-4 flex items-center space-x-4 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-green-500 rounded"></div>
+                    <span>Available</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-red-500 rounded"></div>
+                    <span>Booked</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-gray-400 rounded"></div>
+                    <span>Blocked</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto p-1">
+                  {timeSlots.map((slot) => (
+                    <button
+                      key={slot.time}
+                      onClick={() => slot.available && handleTimeSelect(slot.time)}
+                      disabled={!slot.available}
+                      className={`p-3 rounded-lg font-medium transition-all duration-300 text-sm ${
+                        slot.available
+                          ? 'bg-green-50 border-2 border-green-500 text-green-700 hover:bg-green-100 cursor-pointer'
+                          : slot.reason?.includes('admin') || slot.reason?.includes('Blocked')
+                          ? 'bg-gray-100 border-2 border-gray-400 text-gray-500 cursor-not-allowed'
+                          : 'bg-red-50 border-2 border-red-500 text-red-700 cursor-not-allowed'
+                      }`}
+                      title={slot.available ? 'Click to select' : slot.reason}
+                    >
+                      <div className="flex items-center justify-center">
+                        <Clock size={14} className="mr-1" />
+                        {slot.time}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {existingBookings.length > 0 && (
+                  <div className="mt-6 bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+                    <div className="flex items-start space-x-2">
+                      <AlertCircle className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
+                      <div>
+                        <h4 className="font-semibold text-blue-900 mb-2">Today's Schedule</h4>
+                        <div className="space-y-1 text-sm">
                           {existingBookings.map((booking, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <Clock size={16} className="text-[#82896E]" />
-                                <span className="text-[#264025] font-medium">
-                                  {booking.start_time} - {booking.end_time}
-                                </span>
-                              </div>
-                              <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded-full">
-                                BOOKED
-                              </span>
+                            <div key={index} className="text-blue-700">
+                              {booking.start_time} - {booking.end_time}
                             </div>
                           ))}
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
-                )})
+                )}
               </div>
             )}
 
             {selectedService && selectedDate && selectedTime && (
               <div>
                 <h2 className="text-2xl font-bold text-[#264025] mb-6">Your Details</h2>
-                <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
+                <div className="mb-6 p-4 bg-green-50 border-2 border-green-500 rounded-xl">
+                  <div className="flex items-center space-x-2 text-green-700 mb-2">
+                    <Check size={20} />
+                    <span className="font-bold">Time Slot Selected</span>
+                  </div>
                   <p className="font-semibold text-[#264025]">{selectedService.name}</p>
                   <p className="text-sm text-[#82896E]">
-                    {new Date(selectedDate).toLocaleDateString()} at {selectedTime}
+                    {new Date(selectedDate).toLocaleDateString()} at {selectedTime} - {calculateEndTime(selectedTime, selectedService.duration_minutes)}
                   </p>
                 </div>
                 <div className="space-y-4">

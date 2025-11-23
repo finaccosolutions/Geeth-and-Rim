@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { LogOut, Calendar, Package, Image, Settings, BarChart3 } from 'lucide-react';
+import { LogOut, Calendar, Package, Image, Settings, BarChart3, Ban } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { BookingsManager } from './BookingsManager';
 import { ServicesManager } from './ServicesManager';
 import { ImagesManager } from './ImagesManager';
 import { SettingsManager } from './SettingsManager';
 import { ReportsManager } from './ReportsManager';
+import { TimeBlocker } from './TimeBlocker';
 
 export const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('bookings');
@@ -14,6 +15,7 @@ export const AdminDashboard = () => {
   const tabs = [
     { id: 'bookings', name: 'Bookings', icon: Calendar },
     { id: 'services', name: 'Services', icon: Package },
+    { id: 'timeblocker', name: 'Block Times', icon: Ban },
     { id: 'reports', name: 'Reports', icon: BarChart3 },
     { id: 'images', name: 'Images', icon: Image },
     { id: 'settings', name: 'Settings', icon: Settings },
@@ -63,6 +65,7 @@ export const AdminDashboard = () => {
         <div className="bg-white rounded-2xl shadow-xl p-6">
           {activeTab === 'bookings' && <BookingsManager />}
           {activeTab === 'services' && <ServicesManager />}
+          {activeTab === 'timeblocker' && <TimeBlocker />}
           {activeTab === 'reports' && <ReportsManager />}
           {activeTab === 'images' && <ImagesManager />}
           {activeTab === 'settings' && <SettingsManager />}

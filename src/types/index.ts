@@ -74,3 +74,15 @@ export interface AdminUser {
   role: string;
   created_at: string;
 }
+
+export interface BlockedTimeSlot {
+  id: string;
+  service_id: string;
+  blocked_date: string;
+  start_time: string;
+  end_time: string;
+  reason: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
