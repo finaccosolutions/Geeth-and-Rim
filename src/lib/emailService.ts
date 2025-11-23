@@ -21,9 +21,16 @@ export const sendBookingEmail = async (bookingData: BookingEmailData): Promise<b
       .maybeSingle();
 
     if (!emailSettings) {
-      console.error('Email settings not configured');
+      console.warn('Email settings not configured - emails will not be sent');
       return false;
     }
+
+    console.log('Sending booking emails with settings:', {
+      smtp_host: emailSettings.smtp_host,
+      smtp_port: emailSettings.smtp_port,
+      from_email: emailSettings.from_email,
+      admin_emails: emailSettings.admin_emails
+    });
 
     const formattedDate = new Date(bookingData.bookingDate).toLocaleDateString('en-IN', {
       weekday: 'long',
@@ -247,11 +254,22 @@ export const sendBookingEmail = async (bookingData: BookingEmailData): Promise<b
       }),
     ]);
 
+    const customerResult = await customerEmailResponse.json();
+    const adminResult = await adminEmailResponse.json();
+
+    console.log('Customer email response:', customerEmailResponse.status, customerResult);
+    console.log('Admin email response:', adminEmailResponse.status, adminResult);
+
     if (customerEmailResponse.ok && adminEmailResponse.ok) {
       console.log('Booking emails sent successfully');
       return true;
     } else {
-      console.error('Failed to send booking emails');
+      console.error('Failed to send booking emails', {
+        customerStatus: customerEmailResponse.status,
+        adminStatus: adminEmailResponse.status,
+        customerResult,
+        adminResult
+      });
       return false;
     }
   } catch (error) {

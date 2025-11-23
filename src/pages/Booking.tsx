@@ -64,6 +64,8 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   const loadExistingBookings = async () => {
     if (!selectedDate || !selectedService) return;
 
+    console.log('Loading bookings for date:', selectedDate, 'service:', selectedService.id);
+
     const [bookingsResult, blockedResult] = await Promise.all([
       supabase
         .from('bookings')
@@ -77,6 +79,9 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         .eq('blocked_date', selectedDate)
         .eq('service_id', selectedService.id)
     ]);
+
+    console.log('Bookings result:', bookingsResult);
+    console.log('Blocked result:', blockedResult);
 
     const allBookings: BookingTimeRange[] = [];
 
@@ -102,6 +107,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     }
 
     allBookings.sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
+    console.log('Total bookings loaded:', allBookings.length, allBookings);
     setExistingBookings(allBookings);
   };
 
@@ -235,7 +241,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         return;
       }
 
-      await sendBookingEmail({
+      const emailSent = await sendBookingEmail({
         customerName: formData.name,
         customerEmail: formData.email,
         customerPhone: formData.phone,
@@ -247,6 +253,8 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         notes: formData.notes,
         status: 'confirmed',
       });
+
+      console.log('Email sent status:', emailSent);
 
       setBookingComplete(true);
     } catch (error) {
