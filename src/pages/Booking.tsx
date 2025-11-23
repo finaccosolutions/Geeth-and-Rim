@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Clock, User, Mail, Phone, MessageSquare, ChevronLeft, Check, Sparkles, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { sendBookingEmail } from '../lib/emailService';
+import { useAuth } from '../contexts/AuthContext';
 import { Service, ServiceCategory } from '../types';
 
 interface BookingProps {
@@ -18,6 +19,7 @@ interface BookingTimeRange {
 }
 
 export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
+  const { user } = useAuth();
   const [services, setServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -44,7 +46,27 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     if (!preSelectedService) {
       loadData();
     }
-  }, []);
+    loadUserProfile();
+  }, [user]);
+
+  const loadUserProfile = async () => {
+    if (user) {
+      const { data } = await supabase
+        .from('customer_profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (data) {
+        setFormData({
+          name: data.full_name,
+          email: data.email,
+          phone: data.phone,
+          notes: '',
+        });
+      }
+    }
+  };
 
   useEffect(() => {
     if (selectedDate) {

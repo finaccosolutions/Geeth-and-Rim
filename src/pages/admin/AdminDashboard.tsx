@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, Calendar, Package, Image, Settings, BarChart3, Ban, Phone } from 'lucide-react';
+import { LogOut, Calendar, Package, Image, Settings, BarChart3, Ban, Phone, Palette } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { BookingsManager } from './BookingsManager';
 import { ServicesManager } from './ServicesManager';
@@ -8,6 +8,7 @@ import { SettingsManager } from './SettingsManager';
 import { ReportsManager } from './ReportsManager';
 import { TimeBlocker } from './TimeBlocker';
 import { ContactSettingsManager } from './ContactSettingsManager';
+import { BrandingManager } from './BrandingManager';
 
 export const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('bookings');
@@ -19,6 +20,7 @@ export const AdminDashboard = () => {
     { id: 'timeblocker', name: 'Block Times', icon: Ban },
     { id: 'reports', name: 'Reports', icon: BarChart3 },
     { id: 'images', name: 'Images', icon: Image },
+    { id: 'branding', name: 'Branding', icon: Palette },
     { id: 'contact', name: 'Contact', icon: Phone },
     { id: 'settings', name: 'Email', icon: Settings },
   ];
@@ -70,6 +72,7 @@ export const AdminDashboard = () => {
           {activeTab === 'timeblocker' && <TimeBlocker />}
           {activeTab === 'reports' && <ReportsManager />}
           {activeTab === 'images' && <ImagesManager />}
+          {activeTab === 'branding' && <BrandingManager />}
           {activeTab === 'contact' && <ContactSettingsManager />}
           {activeTab === 'settings' && <SettingsManager />}
         </div>

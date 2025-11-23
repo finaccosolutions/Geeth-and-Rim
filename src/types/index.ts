@@ -102,3 +102,20 @@ export interface ContactSettings {
   };
   updated_at: string;
 }
+
+export interface SiteBranding {
+  id: string;
+  site_name: string;
+  logo_url: string | null;
+  favicon_url: string | null;
+  updated_at: string;
+}
+
+export interface CustomerProfile {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  created_at: string;
+  updated_at: string;
+}

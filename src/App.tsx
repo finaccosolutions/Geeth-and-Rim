@@ -10,6 +10,7 @@ import { Gallery } from './pages/Gallery';
 import { About } from './pages/About';
 import { Contact } from './pages/Contact';
 import { Booking } from './pages/Booking';
+import { Auth } from './pages/Auth';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { Service } from './types';
@@ -52,6 +53,10 @@ function AppContent() {
       return <AdminLogin />;
     }
     return <AdminDashboard />;
+  }
+
+  if (currentPage === 'auth') {
+    return <Auth onNavigate={handleNavigate} />;
   }
 
   return (

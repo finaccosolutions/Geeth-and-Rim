@@ -51,17 +51,17 @@ export const WhatsAppButton = () => {
 
         <button
           onClick={handleClick}
-          className="relative w-16 h-16 bg-[#25D366] rounded-full shadow-2xl hover:shadow-[0_0_30px_rgba(37,211,102,0.6)] transition-all duration-300 hover:scale-110 group animate-pulse hover:animate-none"
+          className="relative w-16 h-16 bg-[#25D366] rounded-full shadow-2xl hover:shadow-[0_0_30px_rgba(37,211,102,0.6)] transition-all duration-300 hover:scale-110 group animate-pulse hover:animate-none z-50"
           aria-label="Contact us on WhatsApp"
         >
-          <div className="absolute inset-0 bg-[#25D366] rounded-full animate-ping opacity-75"></div>
+          <div className="absolute inset-0 bg-[#25D366] rounded-full animate-ping opacity-75 pointer-events-none"></div>
 
-          <div className="relative flex items-center justify-center w-full h-full">
+          <div className="relative flex items-center justify-center w-full h-full z-10">
             <MessageCircle className="text-white" size={32} strokeWidth={2} />
           </div>
         </button>
 
-        <div className="absolute inset-0 rounded-full border-4 border-[#25D366] animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite] opacity-50"></div>
+        <div className="absolute inset-0 rounded-full border-4 border-[#25D366] animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite] opacity-50 pointer-events-none"></div>
       </div>
     </div>
   );

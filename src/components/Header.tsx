@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { Menu, X, Phone, Mail } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Menu, X, User, LogOut } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
   currentPage: string;
@@ -8,11 +10,31 @@ interface HeaderProps {
 
 export const Header = ({ currentPage, onNavigate }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [branding, setBranding] = useState({ site_name: 'Geetandrim', logo_url: null as string | null });
+  const { user, signOut } = useAuth();
+
+  useEffect(() => {
+    loadBranding();
+  }, []);
+
+  const loadBranding = async () => {
+    const { data } = await supabase.from('site_branding').select('*').maybeSingle();
+    if (data) {
+      setBranding({ site_name: data.site_name, logo_url: data.logo_url });
+    }
+  };
+
+  const handleAuthClick = () => {
+    if (user) {
+      signOut();
+    } else {
+      onNavigate('auth');
+    }
+  };
 
   const navItems = [
     { name: 'Home', path: 'home' },
     { name: 'Services', path: 'services' },
-    { name: 'Wedding Packages', path: 'wedding' },
     { name: 'Gallery', path: 'gallery' },
     { name: 'About', path: 'about' },
     { name: 'Contact', path: 'contact' },
@@ -24,10 +46,19 @@ export const Header = ({ currentPage, onNavigate }: HeaderProps) => {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-20">
             <div
-              className="text-2xl font-bold text-[#3D2E1F] cursor-pointer hover:text-[#C17B5C] transition-colors duration-300"
+              className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity duration-300"
               onClick={() => onNavigate('home')}
             >
-              Geetandrim
+              {branding.logo_url ? (
+                <img
+                  src={branding.logo_url}
+                  alt={branding.site_name}
+                  className="h-12 w-auto object-contain"
+                />
+              ) : null}
+              <span className="text-2xl font-bold text-[#3D2E1F]">
+                {branding.site_name}
+              </span>
             </div>
 
             <nav className="hidden lg:flex items-center space-x-8">
@@ -47,14 +78,29 @@ export const Header = ({ currentPage, onNavigate }: HeaderProps) => {
                   }`}></span>
                 </button>
               ))}
+              <button
+                onClick={handleAuthClick}
+                className="flex items-center space-x-2 bg-[#C17B5C] text-white px-4 py-2 rounded-full hover:bg-[#A6684C] transition-all duration-300"
+              >
+                {user ? <LogOut size={18} /> : <User size={18} />}
+                <span>{user ? 'Logout' : 'Login'}</span>
+              </button>
             </nav>
 
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="lg:hidden text-[#3D2E1F] hover:text-[#C17B5C] transition-colors duration-300"
-            >
-              {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
-            </button>
+            <div className="flex items-center space-x-4 lg:hidden">
+              <button
+                onClick={handleAuthClick}
+                className="text-[#3D2E1F] hover:text-[#C17B5C] transition-colors duration-300"
+              >
+                {user ? <LogOut size={24} /> : <User size={24} />}
+              </button>
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="text-[#3D2E1F] hover:text-[#C17B5C] transition-colors duration-300"
+              >
+                {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
+              </button>
+            </div>
           </div>
         </div>
 
