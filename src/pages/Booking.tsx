@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Mail, Phone, MessageSquare, ChevronLeft, Check, ChevronDown } from 'lucide-react';
+import { Calendar, Clock, User, Mail, Phone, MessageSquare, ChevronLeft, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { sendBookingEmail } from '../lib/emailService';
-import { Service, ServiceCategory, Booking as BookingType } from '../types';
+import { Service, ServiceCategory } from '../types';
 
 interface BookingProps {
   preSelectedService?: Service;
@@ -10,7 +10,6 @@ interface BookingProps {
 }
 
 export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
-  const [step, setStep] = useState(1);
   const [services, setServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -28,8 +27,12 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
 
+  const step = !selectedService ? 1 : !selectedDate ? 2 : !selectedTime ? 2 : 3;
+
   useEffect(() => {
-    loadData();
+    if (!preSelectedService) {
+      loadData();
+    }
   }, []);
 
   useEffect(() => {
@@ -54,12 +57,17 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     const slots: string[] = [];
     const startHour = 9;
     const endHour = 20;
-    const slotInterval = 30;
+    const slotInterval = selectedService.duration_minutes;
 
     for (let hour = startHour; hour < endHour; hour++) {
       for (let minute = 0; minute < 60; minute += slotInterval) {
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push(timeString);
+        const totalMinutes = hour * 60 + minute;
+        const endTimeMinutes = totalMinutes + selectedService.duration_minutes;
+
+        if (endTimeMinutes <= endHour * 60) {
+          const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          slots.push(timeString);
+        }
       }
     }
 
@@ -76,8 +84,14 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         const endMinutes = timeToMinutes(booking.end_time);
 
         slots.forEach((slot) => {
-          const slotMinutes = timeToMinutes(slot);
-          if (slotMinutes >= startMinutes && slotMinutes < endMinutes) {
+          const slotStartMinutes = timeToMinutes(slot);
+          const slotEndMinutes = slotStartMinutes + selectedService.duration_minutes;
+
+          if (
+            (slotStartMinutes >= startMinutes && slotStartMinutes < endMinutes) ||
+            (slotEndMinutes > startMinutes && slotEndMinutes <= endMinutes) ||
+            (slotStartMinutes <= startMinutes && slotEndMinutes >= endMinutes)
+          ) {
             booked.push(slot);
           }
         });
@@ -99,25 +113,6 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     const hours = Math.floor(endMinutes / 60);
     const minutes = endMinutes % 60;
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-  };
-
-  const isSlotAvailable = (slot: string) => {
-    if (!selectedService) return false;
-
-    const slotMinutes = timeToMinutes(slot);
-    const duration = selectedService.duration_minutes;
-    const endMinutes = slotMinutes + duration;
-
-    for (let i = slotMinutes; i < endMinutes; i += 30) {
-      const checkHour = Math.floor(i / 60);
-      const checkMinute = i % 60;
-      const checkTime = `${checkHour.toString().padStart(2, '0')}:${checkMinute.toString().padStart(2, '0')}`;
-      if (bookedSlots.includes(checkTime)) {
-        return false;
-      }
-    }
-
-    return true;
   };
 
   const handleSubmit = async () => {
@@ -207,7 +202,17 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="mb-8">
           <button
-            onClick={() => step === 1 ? onNavigate('home') : setStep(step - 1)}
+            onClick={() => {
+              if (selectedTime) {
+                setSelectedTime('');
+              } else if (selectedDate) {
+                setSelectedDate('');
+              } else if (selectedService) {
+                setSelectedService(null);
+              } else {
+                onNavigate('home');
+              }
+            }}
             className="flex items-center space-x-2 text-[#AD6B4B] hover:text-[#7B4B36] transition-colors duration-300"
           >
             <ChevronLeft size={20} />
@@ -219,7 +224,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
           <div className="bg-gradient-to-r from-[#264025] to-[#7B4B36] p-8 text-white">
             <h1 className="text-4xl font-bold mb-4">Book Your Appointment</h1>
             <div className="flex items-center space-x-4 overflow-x-auto pb-2">
-              {[1, 2, 3, 4].map((s) => (
+              {[1, 2, 3].map((s) => (
                 <div key={s} className="flex items-center flex-shrink-0">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
@@ -228,14 +233,14 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                   >
                     {s}
                   </div>
-                  {s < 4 && <div className={`w-12 h-1 ${step > s ? 'bg-[#AD6B4B]' : 'bg-white/20'}`} />}
+                  {s < 3 && <div className={`w-12 h-1 ${step > s ? 'bg-[#AD6B4B]' : 'bg-white/20'}`} />}
                 </div>
               ))}
             </div>
           </div>
 
           <div className="p-6 md:p-8">
-            {step === 1 && (
+            {!selectedService && (
               <div>
                 <h2 className="text-2xl font-bold text-[#264025] mb-6">Select a Service</h2>
 
@@ -272,10 +277,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                             {categoryServices.map((service) => (
                               <div
                                 key={service.id}
-                                onClick={() => {
-                                  setSelectedService(service);
-                                  setStep(2);
-                                }}
+                                onClick={() => setSelectedService(service)}
                                 className="p-4 rounded-lg border-2 border-[#DDCBB7] hover:border-[#AD6B4B] cursor-pointer transition-all duration-300 hover:shadow-lg bg-white"
                               >
                                 <h4 className="font-bold text-[#264025] mb-2">{service.name}</h4>
@@ -295,15 +297,8 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                     {filteredServices.map((service) => (
                       <div
                         key={service.id}
-                        onClick={() => {
-                          setSelectedService(service);
-                          setStep(2);
-                        }}
-                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-300 hover:shadow-lg ${
-                          selectedService?.id === service.id
-                            ? 'border-[#AD6B4B] bg-[#DDCBB7]/20'
-                            : 'border-[#DDCBB7] hover:border-[#AD6B4B]'
-                        }`}
+                        onClick={() => setSelectedService(service)}
+                        className="p-4 rounded-xl border-2 border-[#DDCBB7] hover:border-[#AD6B4B] cursor-pointer transition-all duration-300 hover:shadow-lg"
                       >
                         <h3 className="font-bold text-[#264025] mb-2">{service.name}</h3>
                         <div className="flex items-center justify-between text-sm text-[#82896E]">
@@ -317,12 +312,12 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
               </div>
             )}
 
-            {step === 2 && (
+            {selectedService && !selectedDate && (
               <div>
                 <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Date</h2>
                 <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
-                  <p className="font-semibold text-[#264025]">Selected Service: {selectedService?.name}</p>
-                  <p className="text-sm text-[#82896E]">Duration: {selectedService?.duration_minutes} minutes</p>
+                  <p className="font-semibold text-[#264025]">Selected Service: {selectedService.name}</p>
+                  <p className="text-sm text-[#82896E]">Duration: {selectedService.duration_minutes} minutes • Price: ₹{selectedService.price}</p>
                 </div>
                 <input
                   type="date"
@@ -332,59 +327,52 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg"
                 />
-                <button
-                  onClick={() => setStep(3)}
-                  disabled={!selectedDate}
-                  className="w-full mt-6 bg-[#AD6B4B] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#7B4B36] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Continue
-                </button>
               </div>
             )}
 
-            {step === 3 && (
+            {selectedService && selectedDate && !selectedTime && (
               <div>
                 <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Time</h2>
                 <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
-                  <p className="font-semibold text-[#264025]">{selectedService?.name}</p>
+                  <p className="font-semibold text-[#264025]">{selectedService.name}</p>
                   <p className="text-sm text-[#82896E]">
-                    {new Date(selectedDate).toLocaleDateString()} • {selectedService?.duration_minutes} minutes
+                    {new Date(selectedDate).toLocaleDateString()} • {selectedService.duration_minutes} minutes • ₹{selectedService.price}
                   </p>
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto">
                   {availableSlots.map((slot) => {
-                    const available = isSlotAvailable(slot);
+                    const isBooked = bookedSlots.includes(slot);
                     return (
                       <button
                         key={slot}
-                        onClick={() => available && setSelectedTime(slot)}
-                        disabled={!available}
-                        className={`px-4 py-3 rounded-lg font-semibold transition-all duration-300 ${
-                          selectedTime === slot
-                            ? 'bg-[#AD6B4B] text-white'
-                            : available
-                            ? 'bg-white border-2 border-[#DDCBB7] hover:border-[#AD6B4B] text-[#264025]'
-                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        onClick={() => !isBooked && setSelectedTime(slot)}
+                        disabled={isBooked}
+                        className={`px-4 py-3 rounded-lg font-semibold transition-all duration-300 relative ${
+                          isBooked
+                            ? 'bg-red-100 text-red-400 cursor-not-allowed'
+                            : 'bg-white border-2 border-[#DDCBB7] hover:border-[#AD6B4B] text-[#264025] hover:bg-[#DDCBB7]/20'
                         }`}
                       >
                         {slot}
+                        {isBooked && (
+                          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                        )}
                       </button>
                     );
                   })}
                 </div>
-                <button
-                  onClick={() => setStep(4)}
-                  disabled={!selectedTime}
-                  className="w-full mt-6 bg-[#AD6B4B] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#7B4B36] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Continue
-                </button>
               </div>
             )}
 
-            {step === 4 && (
+            {selectedService && selectedDate && selectedTime && (
               <div>
                 <h2 className="text-2xl font-bold text-[#264025] mb-6">Your Details</h2>
+                <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
+                  <p className="font-semibold text-[#264025]">{selectedService.name}</p>
+                  <p className="text-sm text-[#82896E]">
+                    {new Date(selectedDate).toLocaleDateString()} at {selectedTime} • {selectedService.duration_minutes} minutes • ₹{selectedService.price}
+                  </p>
+                </div>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-[#264025] font-semibold mb-2">Full Name</label>

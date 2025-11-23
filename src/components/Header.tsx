@@ -84,18 +84,6 @@ export const Header = ({ currentPage, onNavigate }: HeaderProps) => {
         </div>
       </header>
 
-      <div className="hidden lg:block fixed top-20 left-0 right-0 z-40 bg-white/60 backdrop-blur-sm border-b border-[#6B5A4A]/10">
-        <div className="container mx-auto px-4 py-2 flex items-center justify-end space-x-6 text-sm text-[#5A4A3A]">
-          <a href="tel:+919876543210" className="flex items-center space-x-2 hover:text-[#C17B5C] transition-colors duration-300">
-            <Phone size={16} />
-            <span>+91 98765 43210</span>
-          </a>
-          <a href="mailto:booking@geetandrim.com" className="flex items-center space-x-2 hover:text-[#C17B5C] transition-colors duration-300">
-            <Mail size={16} />
-            <span>booking@geetandrim.com</span>
-          </a>
-        </div>
-      </div>
     </>
   );
 };
