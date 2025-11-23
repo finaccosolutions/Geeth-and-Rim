@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Mail, Phone, MessageSquare, ChevronLeft, Check, ChevronRight, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, User, Mail, Phone, MessageSquare, ChevronLeft, Check, Sparkles, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { sendBookingEmail } from '../lib/emailService';
-import { Service, ServiceCategory, BlockedTimeSlot } from '../types';
+import { Service, ServiceCategory } from '../types';
 
 interface BookingProps {
   preSelectedService?: Service;
@@ -46,12 +46,13 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   }, []);
 
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && selectedService) {
+      console.log('Date or service changed, loading bookings...');
       loadExistingBookings();
     } else {
       setExistingBookings([]);
     }
-  }, [selectedDate]);
+  }, [selectedDate, selectedService]);
 
   const loadData = async () => {
     const [servicesResult, categoriesResult] = await Promise.all([
@@ -64,7 +65,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   };
 
   const loadExistingBookings = async () => {
-    if (!selectedDate) return;
+    if (!selectedDate || !selectedService) return;
 
     console.log('Loading bookings for date:', selectedDate);
 
@@ -81,8 +82,8 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         .eq('blocked_date', selectedDate)
     ]);
 
-    console.log('Raw bookings result:', bookingsResult);
-    console.log('Raw blocked result:', blockedResult);
+    console.log('Bookings result:', bookingsResult);
+    console.log('Blocked result:', blockedResult);
 
     const allBookings: BookingTimeRange[] = [];
 
@@ -95,8 +96,6 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
           type: 'booking'
         });
       });
-    } else {
-      console.log('No bookings found for this date');
     }
 
     if (blockedResult.data && blockedResult.data.length > 0) {
@@ -109,15 +108,10 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
           reason: blocked.reason
         });
       });
-    } else {
-      console.log('No blocked slots found for this date');
     }
 
     allBookings.sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
     console.log('Total bookings loaded:', allBookings.length);
-    if (allBookings.length > 0) {
-      console.log('Booked time slots:', allBookings);
-    }
     setExistingBookings(allBookings);
   };
 
@@ -200,8 +194,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
       const { data: latestBlocked } = await supabase
         .from('blocked_time_slots')
         .select('*')
-        .eq('blocked_date', selectedDate)
-        .eq('service_id', selectedService.id);
+        .eq('blocked_date', selectedDate);
 
       const selectedStartMinutes = timeToMinutes(selectedTime);
       const selectedEndMinutes = selectedStartMinutes + selectedService.duration_minutes;
@@ -249,13 +242,13 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
       if (error) {
         console.error('Booking insertion error:', error);
         setIsSubmitting(false);
-        alert('Booking failed. Please try again.');
+        alert('Booking failed: ' + error.message);
         return;
       }
 
       console.log('Booking created successfully:', bookingData);
-      console.log('Attempting to send confirmation emails...');
 
+      console.log('Sending confirmation emails to customer and admin...');
       const emailSent = await sendBookingEmail({
         customerName: formData.name,
         customerEmail: formData.email,
@@ -270,16 +263,16 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
       });
 
       if (emailSent) {
-        console.log('Emails sent successfully');
+        console.log('Confirmation emails sent successfully to customer and admin');
       } else {
-        console.warn('Email sending failed, but booking was saved');
+        console.warn('Email sending failed, but booking was saved successfully');
       }
 
       setBookingComplete(true);
     } catch (error) {
       console.error('Booking error:', error);
       setIsSubmitting(false);
-      alert('An error occurred. Please try again.');
+      alert('An error occurred: ' + String(error));
     }
   };
 
@@ -294,7 +287,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   const maxDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const renderTimeline = () => {
-    if (!selectedService) return null;
+    if (!selectedService || !selectedDate) return null;
 
     const openMinutes = timeToMinutes(shopOpenTime);
     const closeMinutes = timeToMinutes(shopCloseTime);
@@ -307,7 +300,12 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
 
     return (
       <div className="mb-6">
-        <h3 className="text-lg font-bold text-[#264025] mb-4">Visual Timeline - Available Times</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-[#264025]">Available Time Slots</h3>
+          <span className="text-sm text-[#82896E]">
+            {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+          </span>
+        </div>
 
         <div className="bg-white border-2 border-[#DDCBB7] rounded-xl p-6 pb-4">
           <div className="relative h-32 bg-gradient-to-r from-green-50 to-green-100 rounded-lg overflow-visible mb-8">
@@ -408,11 +406,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
               <AlertCircle className="text-amber-700 flex-shrink-0 mt-0.5" size={22} />
               <div className="flex-1">
                 <h4 className="font-bold text-amber-900 mb-3">
-                  Already Booked Slots on {new Date(selectedDate).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric'
-                  })}
+                  Already Booked Slots
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {existingBookings.map((booking, index) => (
@@ -444,27 +438,41 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
 
   if (bookingComplete) {
     return (
-      <div className="min-h-screen pt-32 pb-20 flex items-center justify-center">
-        <div className="max-w-md w-full mx-4">
+      <div className="min-h-screen pt-32 pb-20 flex items-center justify-center bg-gradient-to-br from-[#F5E6D3] to-[#E8D5C4]">
+        <div className="max-w-lg w-full mx-4">
           <div className="bg-white rounded-3xl p-8 shadow-2xl text-center">
-            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="text-white" size={40} />
+            <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+              <Check className="text-white" size={48} />
             </div>
-            <h2 className="text-3xl font-bold text-[#264025] mb-4">Booking Confirmed!</h2>
-            <p className="text-[#82896E] mb-6">
-              Your appointment has been confirmed. A confirmation email has been sent to your email address.
+            <h2 className="text-4xl font-bold text-[#264025] mb-4">Booking Confirmed!</h2>
+            <p className="text-[#82896E] mb-8 text-lg">
+              Your appointment has been successfully confirmed. Check your email for the confirmation details.
             </p>
-            <div className="bg-[#DDCBB7] rounded-2xl p-6 mb-6 text-left">
-              <h3 className="font-bold text-[#264025] mb-3">Booking Details</h3>
-              <div className="space-y-2 text-sm text-[#7B4B36]">
-                <p><strong>Service:</strong> {selectedService?.name}</p>
-                <p><strong>Date:</strong> {new Date(selectedDate).toLocaleDateString()}</p>
-                <p><strong>Time:</strong> {selectedTime}</p>
+            <div className="bg-gradient-to-br from-[#DDCBB7]/30 to-[#E8D5C4]/30 rounded-2xl p-6 mb-8 text-left">
+              <h3 className="font-bold text-[#264025] mb-4 flex items-center">
+                <Sparkles className="mr-2 text-[#AD6B4B]" size={20} />
+                Booking Summary
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between border-b border-[#DDCBB7] pb-2">
+                  <span className="text-[#82896E]">Service</span>
+                  <span className="font-semibold text-[#264025]">{selectedService?.name}</span>
+                </div>
+                <div className="flex justify-between border-b border-[#DDCBB7] pb-2">
+                  <span className="text-[#82896E]">Date</span>
+                  <span className="font-semibold text-[#264025]">
+                    {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#82896E]">Time</span>
+                  <span className="font-semibold text-[#264025]">{selectedTime}</span>
+                </div>
               </div>
             </div>
             <button
               onClick={() => onNavigate('home')}
-              className="w-full bg-[#AD6B4B] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#7B4B36] transition-all duration-300"
+              className="w-full bg-gradient-to-r from-[#AD6B4B] to-[#C17B5C] text-white px-6 py-4 rounded-full font-semibold hover:from-[#7B4B36] hover:to-[#AD6B4B] transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
               Back to Home
             </button>
@@ -475,277 +483,316 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   }
 
   return (
-    <div className="min-h-screen pt-32 pb-20">
-      <div className="container mx-auto px-4 max-w-6xl">
-        <div className="mb-8">
-          <button
-            onClick={() => {
-              if (selectedTime) {
-                setSelectedTime('');
-                setManualTimeInput('');
-              } else if (selectedDate) {
-                setSelectedDate('');
-              } else if (selectedService) {
-                setSelectedService(null);
-              } else {
-                onNavigate('home');
-              }
-            }}
-            className="flex items-center space-x-2 text-[#AD6B4B] hover:text-[#7B4B36] transition-colors duration-300"
-          >
-            <ChevronLeft size={20} />
-            <span>Back</span>
-          </button>
+    <div className="min-h-screen pt-32 pb-20 bg-gradient-to-br from-[#FAF6F1] to-[#E8D5C4]/30">
+      <div className="container mx-auto px-4 max-w-7xl">
+        <button
+          onClick={() => {
+            if (selectedTime) {
+              setSelectedTime('');
+              setManualTimeInput('');
+            } else if (selectedDate) {
+              setSelectedDate('');
+            } else if (selectedService) {
+              setSelectedService(null);
+            } else {
+              onNavigate('home');
+            }
+          }}
+          className="flex items-center space-x-2 text-[#AD6B4B] hover:text-[#7B4B36] transition-colors duration-300 mb-8 group"
+        >
+          <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="font-semibold">Back</span>
+        </button>
+
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-[#264025] mb-4">Book Your Appointment</h1>
+          <p className="text-lg text-[#82896E] max-w-2xl mx-auto">
+            {step === 1 && 'Choose the service you would like to book'}
+            {step === 2 && 'Select your preferred date and time'}
+            {step === 3 && 'Enter your contact details to confirm'}
+          </p>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-          <div className="bg-gradient-to-r from-[#264025] to-[#7B4B36] p-8 text-white">
-            <h1 className="text-4xl font-bold mb-4">Book Your Appointment</h1>
-            <div className="flex items-center space-x-4 overflow-x-auto pb-2">
-              {[1, 2, 3].map((s) => (
-                <div key={s} className="flex items-center flex-shrink-0">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                      step >= s ? 'bg-[#AD6B4B]' : 'bg-white/20'
-                    }`}
-                  >
-                    {s}
-                  </div>
-                  {s < 3 && <div className={`w-12 h-1 ${step > s ? 'bg-[#AD6B4B]' : 'bg-white/20'}`} />}
+        <div className="flex items-center justify-center mb-12">
+          <div className="flex items-center space-x-4">
+            {[1, 2, 3].map((s) => (
+              <div key={s} className="flex items-center">
+                <div
+                  className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 ${
+                    step >= s
+                      ? 'bg-gradient-to-br from-[#AD6B4B] to-[#C17B5C] text-white shadow-lg scale-110'
+                      : 'bg-gray-200 text-gray-500'
+                  }`}
+                >
+                  {s}
                 </div>
-              ))}
+                {s < 3 && (
+                  <div
+                    className={`w-16 h-1 mx-2 transition-all duration-300 ${
+                      step > s ? 'bg-[#AD6B4B]' : 'bg-gray-200'
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {!selectedService && (
+          <div className="max-w-6xl mx-auto">
+            <div className="bg-white rounded-3xl shadow-2xl overflow-hidden p-8">
+              <div className="mb-8">
+                <label className="block text-lg font-bold text-[#264025] mb-3">
+                  Filter by Category
+                </label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full px-6 py-4 rounded-xl border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg font-medium bg-gradient-to-r from-white to-[#FAF6F1]"
+                >
+                  <option value="all">All Services</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedCategory === 'all' ? (
+                <div className="space-y-8 max-h-[600px] overflow-y-auto pr-2">
+                  {categories.map((category) => {
+                    const categoryServices = getServicesByCategory(category.id);
+                    if (categoryServices.length === 0) return null;
+
+                    return (
+                      <div key={category.id} className="border-2 border-[#DDCBB7] rounded-2xl overflow-hidden hover:border-[#AD6B4B] transition-all duration-300">
+                        <div className="bg-gradient-to-r from-[#DDCBB7] to-[#E8D5C4] px-6 py-4">
+                          <h3 className="text-xl font-bold text-[#264025]">{category.name}</h3>
+                        </div>
+                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {categoryServices.map((service) => (
+                            <div
+                              key={service.id}
+                              onClick={() => setSelectedService(service)}
+                              className="group relative p-6 rounded-xl border-2 border-[#DDCBB7] hover:border-[#AD6B4B] cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-gradient-to-br from-white to-[#FAF6F1]"
+                            >
+                              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Sparkles className="text-[#AD6B4B]" size={20} />
+                              </div>
+                              <h4 className="font-bold text-[#264025] text-lg mb-2 pr-6">{service.name}</h4>
+                              {service.description && (
+                                <p className="text-sm text-[#82896E] line-clamp-2">{service.description}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[600px] overflow-y-auto pr-2">
+                  {filteredServices.map((service) => (
+                    <div
+                      key={service.id}
+                      onClick={() => setSelectedService(service)}
+                      className="group relative p-6 rounded-xl border-2 border-[#DDCBB7] hover:border-[#AD6B4B] cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-gradient-to-br from-white to-[#FAF6F1]"
+                    >
+                      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Sparkles className="text-[#AD6B4B]" size={20} />
+                      </div>
+                      <h3 className="font-bold text-[#264025] text-lg mb-2 pr-6">{service.name}</h3>
+                      {service.description && (
+                        <p className="text-sm text-[#82896E] line-clamp-2">{service.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
+        )}
 
-          <div className="p-6 md:p-8">
-            {!selectedService && (
-              <div>
-                <h2 className="text-2xl font-bold text-[#264025] mb-6">Select a Service</h2>
-
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold text-[#264025] mb-2">
-                    Filter by Category
-                  </label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300"
-                  >
-                    <option value="all">All Services</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
+        {selectedService && !selectedTime && (
+          <div className="max-w-5xl mx-auto">
+            <div className="bg-white rounded-3xl shadow-2xl overflow-hidden p-8">
+              <div className="mb-8 p-6 bg-gradient-to-r from-[#DDCBB7]/30 to-[#E8D5C4]/30 rounded-2xl border-2 border-[#AD6B4B]">
+                <div className="flex items-center space-x-3 mb-2">
+                  <Sparkles className="text-[#AD6B4B]" size={24} />
+                  <span className="text-sm font-semibold text-[#82896E] uppercase tracking-wide">Selected Service</span>
                 </div>
+                <h2 className="text-2xl font-bold text-[#264025]">{selectedService.name}</h2>
+              </div>
 
-                {selectedCategory === 'all' ? (
-                  <div className="space-y-6 max-h-[500px] overflow-y-auto">
-                    {categories.map((category) => {
-                      const categoryServices = getServicesByCategory(category.id);
-                      if (categoryServices.length === 0) return null;
+              <div className="mb-8">
+                <label className="block text-lg font-bold text-[#264025] mb-3 flex items-center">
+                  <Calendar className="mr-2 text-[#AD6B4B]" size={24} />
+                  Select Your Preferred Date
+                </label>
+                <input
+                  type="date"
+                  min={minDate}
+                  max={maxDate}
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full px-6 py-4 rounded-xl border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg font-medium bg-gradient-to-r from-white to-[#FAF6F1]"
+                />
+              </div>
 
-                      return (
-                        <div key={category.id} className="border-2 border-[#DDCBB7] rounded-xl overflow-hidden">
-                          <div className="bg-[#DDCBB7] px-4 py-3">
-                            <h3 className="font-bold text-[#264025]">{category.name}</h3>
-                          </div>
-                          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {categoryServices.map((service) => (
-                              <div
-                                key={service.id}
-                                onClick={() => setSelectedService(service)}
-                                className="p-4 rounded-lg border-2 border-[#DDCBB7] hover:border-[#AD6B4B] cursor-pointer transition-all duration-300 hover:shadow-lg bg-white"
-                              >
-                                <h4 className="font-bold text-[#264025]">{service.name}</h4>
-                                <p className="text-sm text-[#82896E] mt-1">
-                                  {service.duration_minutes} min • ₹{service.price}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto">
-                    {filteredServices.map((service) => (
-                      <div
-                        key={service.id}
-                        onClick={() => setSelectedService(service)}
-                        className="p-4 rounded-xl border-2 border-[#DDCBB7] hover:border-[#AD6B4B] cursor-pointer transition-all duration-300 hover:shadow-lg"
+              {selectedDate && (
+                <>
+                  {renderTimeline()}
+
+                  <div className="bg-gradient-to-br from-[#264025]/5 to-[#AD6B4B]/5 rounded-2xl p-8 border-2 border-[#AD6B4B]">
+                    <h3 className="text-xl font-bold text-[#264025] mb-4 flex items-center">
+                      <Clock className="mr-2 text-[#AD6B4B]" size={24} />
+                      Enter Your Preferred Time
+                    </h3>
+                    <p className="text-sm text-[#82896E] mb-6">
+                      Our shop is open from {shopOpenTime} to {shopCloseTime}
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="flex-1">
+                        <input
+                          type="time"
+                          value={manualTimeInput}
+                          onChange={(e) => handleTimeInputChange(e.target.value)}
+                          className="w-full px-6 py-4 rounded-xl border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg font-medium"
+                          min={shopOpenTime}
+                          max={shopCloseTime}
+                        />
+                        {manualTimeInput && (
+                          <p className="text-sm text-[#82896E] mt-2">
+                            Session ends at: {calculateEndTime(manualTimeInput, selectedService.duration_minutes)}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={handleSetTime}
+                        disabled={!manualTimeInput || !isTimeAvailable(manualTimeInput)}
+                        className="sm:w-auto bg-gradient-to-r from-[#AD6B4B] to-[#C17B5C] text-white px-10 py-4 rounded-xl font-bold hover:from-[#7B4B36] hover:to-[#AD6B4B] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 shadow-lg disabled:hover:scale-100"
                       >
-                        <h3 className="font-bold text-[#264025]">{service.name}</h3>
-                        <p className="text-sm text-[#82896E] mt-1">
-                          {service.duration_minutes} min • ₹{service.price}
-                        </p>
+                        Continue
+                      </button>
+                    </div>
+                    {timeError && (
+                      <div className="mt-4 p-4 bg-red-50 border-2 border-red-300 rounded-xl text-red-700 font-medium">
+                        {timeError}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {selectedService && !selectedTime && (
-              <div>
-                <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Date & Time</h2>
-                <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
-                  <p className="font-semibold text-[#264025]">Selected Service: {selectedService.name}</p>
-                </div>
-
-                <div className="mb-6">
-                  <label className="block text-[#264025] font-semibold mb-2">Select Date</label>
-                  <input
-                    type="date"
-                    min={minDate}
-                    max={maxDate}
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg"
-                  />
-                </div>
-
-                {selectedDate && (
-                  <>
-                    {renderTimeline()}
-
-                    <div className="bg-gradient-to-r from-[#264025]/5 to-[#AD6B4B]/5 rounded-xl p-6 border-2 border-[#AD6B4B]">
-                      <h3 className="text-lg font-bold text-[#264025] mb-4">Enter Your Preferred Time</h3>
-                      <p className="text-sm text-[#82896E] mb-4">
-                        Shop hours: {shopOpenTime} - {shopCloseTime}. Your service will take {selectedService.duration_minutes} minutes.
-                      </p>
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="flex-1">
-                          <label className="block text-sm font-semibold text-[#264025] mb-2">
-                            Start Time
-                          </label>
-                          <div className="relative">
-                            <Clock className="absolute left-3 top-3.5 text-[#82896E]" size={20} />
-                            <input
-                              type="time"
-                              value={manualTimeInput}
-                              onChange={(e) => handleTimeInputChange(e.target.value)}
-                              className="w-full pl-11 pr-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg"
-                              min={shopOpenTime}
-                              max={shopCloseTime}
-                            />
-                          </div>
-                          {manualTimeInput && (
-                            <p className="text-xs text-[#82896E] mt-2">
-                              End time: {calculateEndTime(manualTimeInput, selectedService.duration_minutes)}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-end">
-                          <button
-                            onClick={handleSetTime}
-                            disabled={!manualTimeInput || !isTimeAvailable(manualTimeInput)}
-                            className="w-full sm:w-auto bg-[#AD6B4B] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#7B4B36] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                          >
-                            <span>Next</span>
-                            <ChevronRight size={20} />
-                          </button>
-                        </div>
+                    )}
+                    {manualTimeInput && isTimeAvailable(manualTimeInput) && (
+                      <div className="mt-4 p-4 bg-green-50 border-2 border-green-300 rounded-xl text-green-700 font-medium flex items-center">
+                        <Check className="mr-2" size={20} />
+                        This time is available! Click Continue to proceed.
                       </div>
-                      {timeError && (
-                        <div className="mt-4 p-3 bg-red-50 border-2 border-red-300 rounded-lg text-red-700 text-sm font-medium">
-                          {timeError}
-                        </div>
-                      )}
-                      {manualTimeInput && isTimeAvailable(manualTimeInput) && (
-                        <div className="mt-4 p-3 bg-green-50 border-2 border-green-300 rounded-lg text-green-700 text-sm font-medium">
-                          This time is available! Click Next to proceed.
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {selectedService && selectedDate && selectedTime && (
-              <div>
-                <h2 className="text-2xl font-bold text-[#264025] mb-6">Your Details</h2>
-                <div className="mb-6 p-4 bg-green-50 border-2 border-green-500 rounded-xl">
-                  <div className="flex items-center space-x-2 text-green-700 mb-2">
-                    <Check size={20} />
-                    <span className="font-bold">Time Confirmed</span>
+                    )}
                   </div>
-                  <p className="font-semibold text-[#264025]">{selectedService.name}</p>
-                  <p className="text-sm text-[#82896E]">
-                    {new Date(selectedDate).toLocaleDateString()} at {selectedTime} - {calculateEndTime(selectedTime, selectedService.duration_minutes)}
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-[#264025] font-semibold mb-2">Full Name</label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3.5 text-[#82896E]" size={20} />
-                      <input
-                        type="text"
-                        required
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full pl-11 pr-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300"
-                        placeholder="Enter your name"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[#264025] font-semibold mb-2">Email</label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3.5 text-[#82896E]" size={20} />
-                      <input
-                        type="email"
-                        required
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full pl-11 pr-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300"
-                        placeholder="Enter your email"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[#264025] font-semibold mb-2">Phone</label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-3.5 text-[#82896E]" size={20} />
-                      <input
-                        type="tel"
-                        required
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full pl-11 pr-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300"
-                        placeholder="Enter your phone"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[#264025] font-semibold mb-2">Notes (Optional)</label>
-                    <div className="relative">
-                      <MessageSquare className="absolute left-3 top-3.5 text-[#82896E]" size={20} />
-                      <textarea
-                        rows={3}
-                        value={formData.notes}
-                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                        className="w-full pl-11 pr-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 resize-none"
-                        placeholder="Any special requests?"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting || !formData.name || !formData.email || !formData.phone}
-                  className="w-full mt-6 bg-[#AD6B4B] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#7B4B36] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? 'Submitting...' : 'Confirm Booking'}
-                </button>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {selectedService && selectedDate && selectedTime && (
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-white rounded-3xl shadow-2xl overflow-hidden p-8">
+              <div className="mb-8 p-6 bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-500 rounded-2xl">
+                <div className="flex items-center space-x-2 text-green-700 mb-3">
+                  <Check size={24} />
+                  <span className="text-lg font-bold">Time Slot Confirmed</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-[#264025]">
+                  <div>
+                    <div className="text-sm text-[#82896E] mb-1">Service</div>
+                    <div className="font-bold">{selectedService.name}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-[#82896E] mb-1">Date</div>
+                    <div className="font-bold">{new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-[#82896E] mb-1">Time</div>
+                    <div className="font-bold">{selectedTime} - {calculateEndTime(selectedTime, selectedService.duration_minutes)}</div>
+                  </div>
+                </div>
+              </div>
+
+              <h2 className="text-2xl font-bold text-[#264025] mb-6">Your Contact Details</h2>
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-[#264025] font-semibold mb-2">Full Name</label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-4 text-[#82896E]" size={20} />
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg"
+                      placeholder="Enter your full name"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[#264025] font-semibold mb-2">Email Address</label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-4 text-[#82896E]" size={20} />
+                    <input
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg"
+                      placeholder="your.email@example.com"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[#264025] font-semibold mb-2">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-4 top-4 text-[#82896E]" size={20} />
+                    <input
+                      type="tel"
+                      required
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg"
+                      placeholder="+91 98765 43210"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[#264025] font-semibold mb-2">Special Requests (Optional)</label>
+                  <div className="relative">
+                    <MessageSquare className="absolute left-4 top-4 text-[#82896E]" size={20} />
+                    <textarea
+                      rows={4}
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 resize-none text-lg"
+                      placeholder="Any special requests or preferences?"
+                    />
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting || !formData.name || !formData.email || !formData.phone}
+                className="w-full mt-8 bg-gradient-to-r from-[#AD6B4B] to-[#C17B5C] text-white px-8 py-5 rounded-full text-xl font-bold hover:from-[#7B4B36] hover:to-[#AD6B4B] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 shadow-2xl disabled:hover:scale-100"
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center">
+                    <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin mr-3"></div>
+                    Confirming Your Booking...
+                  </span>
+                ) : (
+                  'Confirm Booking'
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
