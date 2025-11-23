@@ -9,9 +9,10 @@ interface BookingProps {
   onNavigate: (page: string) => void;
 }
 
-interface TimeSlot {
-  time: string;
-  available: boolean;
+interface BookingTimeRange {
+  start_time: string;
+  end_time: string;
+  type: 'booking' | 'blocked';
   reason?: string;
 }
 
@@ -21,11 +22,9 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedService, setSelectedService] = useState<Service | null>(preSelectedService || null);
   const [selectedDate, setSelectedDate] = useState('');
-  const [showTimeSelection, setShowTimeSelection] = useState(false);
   const [selectedTime, setSelectedTime] = useState('');
-  const [existingBookings, setExistingBookings] = useState<{ start_time: string; end_time: string }[]>([]);
-  const [blockedSlots, setBlockedSlots] = useState<BlockedTimeSlot[]>([]);
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const [manualTimeInput, setManualTimeInput] = useState('');
+  const [existingBookings, setExistingBookings] = useState<BookingTimeRange[]>([]);
   const shopOpenTime = '09:00';
   const shopCloseTime = '20:00';
   const [formData, setFormData] = useState({
@@ -36,6 +35,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
+  const [timeError, setTimeError] = useState('');
 
   const step = !selectedService ? 1 : !selectedTime ? 2 : 3;
 
@@ -46,10 +46,10 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   }, []);
 
   useEffect(() => {
-    if (selectedDate && selectedService && showTimeSelection) {
+    if (selectedDate && selectedService) {
       loadExistingBookings();
     }
-  }, [selectedDate, selectedService, showTimeSelection]);
+  }, [selectedDate, selectedService]);
 
   const loadData = async () => {
     const [servicesResult, categoriesResult] = await Promise.all([
@@ -73,24 +73,36 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         .order('start_time', { ascending: true }),
       supabase
         .from('blocked_time_slots')
-        .select('*')
+        .select('start_time, end_time, reason')
         .eq('blocked_date', selectedDate)
         .eq('service_id', selectedService.id)
     ]);
 
+    const allBookings: BookingTimeRange[] = [];
+
     if (bookingsResult.data) {
-      setExistingBookings(bookingsResult.data);
-    } else {
-      setExistingBookings([]);
+      bookingsResult.data.forEach(booking => {
+        allBookings.push({
+          start_time: booking.start_time,
+          end_time: booking.end_time,
+          type: 'booking'
+        });
+      });
     }
 
     if (blockedResult.data) {
-      setBlockedSlots(blockedResult.data);
-    } else {
-      setBlockedSlots([]);
+      blockedResult.data.forEach(blocked => {
+        allBookings.push({
+          start_time: blocked.start_time,
+          end_time: blocked.end_time,
+          type: 'blocked',
+          reason: blocked.reason
+        });
+      });
     }
 
-    generateTimeSlots(bookingsResult.data || [], blockedResult.data || []);
+    allBookings.sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
+    setExistingBookings(allBookings);
   };
 
   const timeToMinutes = (time: string) => {
@@ -110,67 +122,49 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     return minutesToTime(endMinutes);
   };
 
-  const generateTimeSlots = (bookings: { start_time: string; end_time: string }[], blocked: BlockedTimeSlot[]) => {
-    if (!selectedService) return;
+  const isTimeAvailable = (startTime: string) => {
+    if (!selectedService) return false;
 
-    const slots: TimeSlot[] = [];
+    const startMinutes = timeToMinutes(startTime);
+    const endMinutes = startMinutes + selectedService.duration_minutes;
     const openMinutes = timeToMinutes(shopOpenTime);
     const closeMinutes = timeToMinutes(shopCloseTime);
-    const slotInterval = 30;
 
-    for (let minutes = openMinutes; minutes < closeMinutes; minutes += slotInterval) {
-      const slotTime = minutesToTime(minutes);
-      const slotEndMinutes = minutes + selectedService.duration_minutes;
-
-      if (slotEndMinutes > closeMinutes) {
-        break;
-      }
-
-      const hasBookingConflict = bookings.some((booking) => {
-        const bookingStart = timeToMinutes(booking.start_time);
-        const bookingEnd = timeToMinutes(booking.end_time);
-        return (
-          (minutes >= bookingStart && minutes < bookingEnd) ||
-          (slotEndMinutes > bookingStart && slotEndMinutes <= bookingEnd) ||
-          (minutes <= bookingStart && slotEndMinutes >= bookingEnd)
-        );
-      });
-
-      const blockedSlot = blocked.find((block) => {
-        const blockStart = timeToMinutes(block.start_time);
-        const blockEnd = timeToMinutes(block.end_time);
-        return (
-          (minutes >= blockStart && minutes < blockEnd) ||
-          (slotEndMinutes > blockStart && slotEndMinutes <= blockEnd) ||
-          (minutes <= blockStart && slotEndMinutes >= blockEnd)
-        );
-      });
-
-      if (blockedSlot) {
-        slots.push({
-          time: slotTime,
-          available: false,
-          reason: blockedSlot.reason || 'Blocked by admin'
-        });
-      } else if (hasBookingConflict) {
-        slots.push({
-          time: slotTime,
-          available: false,
-          reason: 'Already booked'
-        });
-      } else {
-        slots.push({
-          time: slotTime,
-          available: true
-        });
-      }
+    if (startMinutes < openMinutes || endMinutes > closeMinutes) {
+      return false;
     }
 
-    setTimeSlots(slots);
+    return !existingBookings.some((booking) => {
+      const bookingStart = timeToMinutes(booking.start_time);
+      const bookingEnd = timeToMinutes(booking.end_time);
+      return (
+        (startMinutes >= bookingStart && startMinutes < bookingEnd) ||
+        (endMinutes > bookingStart && endMinutes <= bookingEnd) ||
+        (startMinutes <= bookingStart && endMinutes >= bookingEnd)
+      );
+    });
   };
 
-  const handleTimeSelect = (time: string) => {
-    setSelectedTime(time);
+  const handleTimeInputChange = (time: string) => {
+    setManualTimeInput(time);
+    setTimeError('');
+
+    if (time && time.match(/^\d{2}:\d{2}$/)) {
+      if (isTimeAvailable(time)) {
+        setTimeError('');
+      } else {
+        setTimeError('This time is not available. Please choose another time.');
+      }
+    }
+  };
+
+  const handleSetTime = () => {
+    if (manualTimeInput && isTimeAvailable(manualTimeInput)) {
+      setSelectedTime(manualTimeInput);
+      setTimeError('');
+    } else {
+      setTimeError('Please select an available time slot.');
+    }
   };
 
   const handleSubmit = async () => {
@@ -272,6 +266,128 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   const minDate = new Date().toISOString().split('T')[0];
   const maxDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
+  const renderTimeline = () => {
+    if (!selectedService) return null;
+
+    const openMinutes = timeToMinutes(shopOpenTime);
+    const closeMinutes = timeToMinutes(shopCloseTime);
+    const totalMinutes = closeMinutes - openMinutes;
+    const hours = [];
+
+    for (let h = Math.floor(openMinutes / 60); h <= Math.floor(closeMinutes / 60); h++) {
+      hours.push(h);
+    }
+
+    return (
+      <div className="mb-6">
+        <h3 className="text-lg font-bold text-[#264025] mb-4">Visual Timeline - Available Times</h3>
+
+        <div className="bg-white border-2 border-[#DDCBB7] rounded-xl p-4">
+          <div className="relative h-24 bg-gradient-to-r from-green-50 to-green-100 rounded-lg overflow-hidden">
+            <div className="absolute inset-0 flex">
+              {hours.map((hour, index) => (
+                <div
+                  key={hour}
+                  className="flex-1 border-r border-gray-300 last:border-r-0 relative"
+                  style={{ minWidth: '60px' }}
+                >
+                  <div className="absolute -bottom-6 left-0 text-xs font-medium text-gray-600 transform -translate-x-1/2">
+                    {hour.toString().padStart(2, '0')}:00
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {existingBookings.map((booking, index) => {
+              const startMinutes = timeToMinutes(booking.start_time);
+              const endMinutes = timeToMinutes(booking.end_time);
+              const left = ((startMinutes - openMinutes) / totalMinutes) * 100;
+              const width = ((endMinutes - startMinutes) / totalMinutes) * 100;
+
+              return (
+                <div
+                  key={index}
+                  className={`absolute top-2 bottom-2 ${
+                    booking.type === 'blocked' ? 'bg-gray-400' : 'bg-red-500'
+                  } rounded shadow-lg border-2 border-white transition-all hover:scale-105 hover:z-10 cursor-pointer group`}
+                  style={{
+                    left: `${left}%`,
+                    width: `${width}%`,
+                  }}
+                  title={booking.type === 'blocked' ? booking.reason : `Booked: ${booking.start_time} - ${booking.end_time}`}
+                >
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded">
+                    <div>{booking.start_time}</div>
+                    <div>-</div>
+                    <div>{booking.end_time}</div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {manualTimeInput && isTimeAvailable(manualTimeInput) && selectedService && (
+              <div
+                className="absolute top-1 bottom-1 bg-blue-500 bg-opacity-60 border-2 border-blue-700 rounded shadow-lg animate-pulse"
+                style={{
+                  left: `${((timeToMinutes(manualTimeInput) - openMinutes) / totalMinutes) * 100}%`,
+                  width: `${(selectedService.duration_minutes / totalMinutes) * 100}%`,
+                }}
+              >
+                <div className="flex items-center justify-center h-full text-white text-xs font-bold">
+                  Your Slot
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 flex items-center justify-center space-x-6 text-sm">
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-green-100 border-2 border-green-500 rounded"></div>
+              <span className="text-gray-700">Available</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-red-500 rounded"></div>
+              <span className="text-gray-700">Booked</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-gray-400 rounded"></div>
+              <span className="text-gray-700">Blocked</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-blue-500 bg-opacity-60 border-2 border-blue-700 rounded"></div>
+              <span className="text-gray-700">Your Selection</span>
+            </div>
+          </div>
+        </div>
+
+        {existingBookings.length > 0 && (
+          <div className="mt-4 bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+            <div className="flex items-start space-x-2">
+              <AlertCircle className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
+              <div className="flex-1">
+                <h4 className="font-semibold text-blue-900 mb-2">Existing Bookings on {new Date(selectedDate).toLocaleDateString()}</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {existingBookings.map((booking, index) => (
+                    <div key={index} className={`text-sm px-3 py-2 rounded-lg ${
+                      booking.type === 'blocked'
+                        ? 'bg-gray-100 text-gray-700 border border-gray-300'
+                        : 'bg-red-100 text-red-700 border border-red-300'
+                    }`}>
+                      <div className="font-semibold">{booking.start_time} - {booking.end_time}</div>
+                      {booking.type === 'blocked' && booking.reason && (
+                        <div className="text-xs mt-1 opacity-75">{booking.reason}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (bookingComplete) {
     return (
       <div className="min-h-screen pt-32 pb-20 flex items-center justify-center">
@@ -312,8 +428,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
             onClick={() => {
               if (selectedTime) {
                 setSelectedTime('');
-              } else if (showTimeSelection) {
-                setShowTimeSelection(false);
+                setManualTimeInput('');
               } else if (selectedDate) {
                 setSelectedDate('');
               } else if (selectedService) {
@@ -419,9 +534,9 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
               </div>
             )}
 
-            {selectedService && !showTimeSelection && !selectedTime && (
+            {selectedService && !selectedTime && (
               <div>
-                <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Date</h2>
+                <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Date & Time</h2>
                 <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
                   <p className="font-semibold text-[#264025]">Selected Service: {selectedService.name}</p>
                   <p className="text-sm text-[#82896E]">Duration: {selectedService.duration_minutes} minutes • Price: ₹{selectedService.price}</p>
@@ -440,81 +555,59 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                 </div>
 
                 {selectedDate && (
-                  <button
-                    onClick={() => setShowTimeSelection(true)}
-                    className="w-full bg-[#AD6B4B] text-white px-6 py-4 rounded-full font-semibold hover:bg-[#7B4B36] transition-all duration-300 flex items-center justify-center space-x-2"
-                  >
-                    <span>Continue to Time Selection</span>
-                    <ChevronRight size={20} />
-                  </button>
-                )}
-              </div>
-            )}
+                  <>
+                    {renderTimeline()}
 
-            {selectedService && selectedDate && showTimeSelection && !selectedTime && (
-              <div>
-                <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Time Slot</h2>
-                <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
-                  <p className="font-semibold text-[#264025]">{selectedService.name}</p>
-                  <p className="text-sm text-[#82896E]">
-                    {new Date(selectedDate).toLocaleDateString()} • {selectedService.duration_minutes} minutes
-                  </p>
-                </div>
-
-                <div className="mb-4 flex items-center space-x-4 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-green-500 rounded"></div>
-                    <span>Available</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-red-500 rounded"></div>
-                    <span>Booked</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-gray-400 rounded"></div>
-                    <span>Blocked</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto p-1">
-                  {timeSlots.map((slot) => (
-                    <button
-                      key={slot.time}
-                      onClick={() => slot.available && handleTimeSelect(slot.time)}
-                      disabled={!slot.available}
-                      className={`p-3 rounded-lg font-medium transition-all duration-300 text-sm ${
-                        slot.available
-                          ? 'bg-green-50 border-2 border-green-500 text-green-700 hover:bg-green-100 cursor-pointer'
-                          : slot.reason?.includes('admin') || slot.reason?.includes('Blocked')
-                          ? 'bg-gray-100 border-2 border-gray-400 text-gray-500 cursor-not-allowed'
-                          : 'bg-red-50 border-2 border-red-500 text-red-700 cursor-not-allowed'
-                      }`}
-                      title={slot.available ? 'Click to select' : slot.reason}
-                    >
-                      <div className="flex items-center justify-center">
-                        <Clock size={14} className="mr-1" />
-                        {slot.time}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                {existingBookings.length > 0 && (
-                  <div className="mt-6 bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
-                    <div className="flex items-start space-x-2">
-                      <AlertCircle className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
-                      <div>
-                        <h4 className="font-semibold text-blue-900 mb-2">Today's Schedule</h4>
-                        <div className="space-y-1 text-sm">
-                          {existingBookings.map((booking, index) => (
-                            <div key={index} className="text-blue-700">
-                              {booking.start_time} - {booking.end_time}
-                            </div>
-                          ))}
+                    <div className="bg-gradient-to-r from-[#264025]/5 to-[#AD6B4B]/5 rounded-xl p-6 border-2 border-[#AD6B4B]">
+                      <h3 className="text-lg font-bold text-[#264025] mb-4">Enter Your Preferred Time</h3>
+                      <p className="text-sm text-[#82896E] mb-4">
+                        Shop hours: {shopOpenTime} - {shopCloseTime}. Your service will take {selectedService.duration_minutes} minutes.
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex-1">
+                          <label className="block text-sm font-semibold text-[#264025] mb-2">
+                            Start Time
+                          </label>
+                          <div className="relative">
+                            <Clock className="absolute left-3 top-3.5 text-[#82896E]" size={20} />
+                            <input
+                              type="time"
+                              value={manualTimeInput}
+                              onChange={(e) => handleTimeInputChange(e.target.value)}
+                              className="w-full pl-11 pr-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg"
+                              min={shopOpenTime}
+                              max={shopCloseTime}
+                            />
+                          </div>
+                          {manualTimeInput && (
+                            <p className="text-xs text-[#82896E] mt-2">
+                              End time: {calculateEndTime(manualTimeInput, selectedService.duration_minutes)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-end">
+                          <button
+                            onClick={handleSetTime}
+                            disabled={!manualTimeInput || !isTimeAvailable(manualTimeInput)}
+                            className="w-full sm:w-auto bg-[#AD6B4B] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#7B4B36] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                          >
+                            <span>Next</span>
+                            <ChevronRight size={20} />
+                          </button>
                         </div>
                       </div>
+                      {timeError && (
+                        <div className="mt-4 p-3 bg-red-50 border-2 border-red-300 rounded-lg text-red-700 text-sm font-medium">
+                          {timeError}
+                        </div>
+                      )}
+                      {manualTimeInput && isTimeAvailable(manualTimeInput) && (
+                        <div className="mt-4 p-3 bg-green-50 border-2 border-green-300 rounded-lg text-green-700 text-sm font-medium">
+                          This time is available! Click Next to proceed.
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             )}
@@ -525,7 +618,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                 <div className="mb-6 p-4 bg-green-50 border-2 border-green-500 rounded-xl">
                   <div className="flex items-center space-x-2 text-green-700 mb-2">
                     <Check size={20} />
-                    <span className="font-bold">Time Slot Selected</span>
+                    <span className="font-bold">Time Confirmed</span>
                   </div>
                   <p className="font-semibold text-[#264025]">{selectedService.name}</p>
                   <p className="text-sm text-[#82896E]">
