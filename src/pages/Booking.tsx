@@ -16,8 +16,10 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   const [selectedService, setSelectedService] = useState<Service | null>(preSelectedService || null);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [existingBookings, setExistingBookings] = useState<{ start_time: string; end_time: string }[]>([]);
+  const [timeError, setTimeError] = useState('');
+  const shopOpenTime = '09:00';
+  const shopCloseTime = '20:00';
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -36,10 +38,10 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   }, []);
 
   useEffect(() => {
-    if (selectedDate && selectedService) {
-      loadAvailableSlots();
+    if (selectedDate) {
+      loadExistingBookings();
     }
-  }, [selectedDate, selectedService]);
+  }, [selectedDate]);
 
   const loadData = async () => {
     const [servicesResult, categoriesResult] = await Promise.all([
@@ -51,55 +53,21 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     if (categoriesResult.data) setCategories(categoriesResult.data);
   };
 
-  const loadAvailableSlots = async () => {
-    if (!selectedService || !selectedDate) return;
-
-    const slots: string[] = [];
-    const startHour = 9;
-    const endHour = 20;
-    const slotInterval = selectedService.duration_minutes;
-
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let minute = 0; minute < 60; minute += slotInterval) {
-        const totalMinutes = hour * 60 + minute;
-        const endTimeMinutes = totalMinutes + selectedService.duration_minutes;
-
-        if (endTimeMinutes <= endHour * 60) {
-          const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          slots.push(timeString);
-        }
-      }
-    }
+  const loadExistingBookings = async () => {
+    if (!selectedDate) return;
 
     const { data: bookings } = await supabase
       .from('bookings')
       .select('start_time, end_time')
       .eq('booking_date', selectedDate)
-      .neq('status', 'cancelled');
+      .neq('status', 'cancelled')
+      .order('start_time', { ascending: true });
 
-    const booked: string[] = [];
     if (bookings) {
-      bookings.forEach((booking) => {
-        const startMinutes = timeToMinutes(booking.start_time);
-        const endMinutes = timeToMinutes(booking.end_time);
-
-        slots.forEach((slot) => {
-          const slotStartMinutes = timeToMinutes(slot);
-          const slotEndMinutes = slotStartMinutes + selectedService.duration_minutes;
-
-          if (
-            (slotStartMinutes >= startMinutes && slotStartMinutes < endMinutes) ||
-            (slotEndMinutes > startMinutes && slotEndMinutes <= endMinutes) ||
-            (slotStartMinutes <= startMinutes && slotEndMinutes >= endMinutes)
-          ) {
-            booked.push(slot);
-          }
-        });
-      });
+      setExistingBookings(bookings);
+    } else {
+      setExistingBookings([]);
     }
-
-    setBookedSlots(booked);
-    setAvailableSlots(slots);
   };
 
   const timeToMinutes = (time: string) => {
@@ -115,21 +83,73 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
+  const validateTimeSlot = (time: string): string | null => {
+    if (!selectedService) return null;
+
+    const selectedStartMinutes = timeToMinutes(time);
+    const selectedEndMinutes = selectedStartMinutes + selectedService.duration_minutes;
+    const shopOpenMinutes = timeToMinutes(shopOpenTime);
+    const shopCloseMinutes = timeToMinutes(shopCloseTime);
+
+    if (selectedStartMinutes < shopOpenMinutes) {
+      return `Shop opens at ${shopOpenTime}. Please select a time after that.`;
+    }
+
+    if (selectedEndMinutes > shopCloseMinutes) {
+      return `This appointment would end after closing time (${shopCloseTime}). Please select an earlier time.`;
+    }
+
+    const hasConflict = existingBookings.some((booking) => {
+      const bookingStart = timeToMinutes(booking.start_time);
+      const bookingEnd = timeToMinutes(booking.end_time);
+
+      return (
+        (selectedStartMinutes >= bookingStart && selectedStartMinutes < bookingEnd) ||
+        (selectedEndMinutes > bookingStart && selectedEndMinutes <= bookingEnd) ||
+        (selectedStartMinutes <= bookingStart && selectedEndMinutes >= bookingEnd)
+      );
+    });
+
+    if (hasConflict) {
+      return 'This time conflicts with an existing booking. Please choose a different time.';
+    }
+
+    return null;
+  };
+
+  const handleTimeChange = (time: string) => {
+    setSelectedTime(time);
+    setTimeError('');
+
+    if (time && selectedService) {
+      const error = validateTimeSlot(time);
+      if (error) {
+        setTimeError(error);
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     if (!selectedService || !selectedDate || !selectedTime) return;
+
+    const validationError = validateTimeSlot(selectedTime);
+    if (validationError) {
+      setTimeError(validationError);
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
       const endTime = calculateEndTime(selectedTime, selectedService.duration_minutes);
 
-      const { data: existingBookings } = await supabase
+      const { data: latestBookings } = await supabase
         .from('bookings')
         .select('start_time, end_time')
         .eq('booking_date', selectedDate)
         .neq('status', 'cancelled');
 
-      const isSlotAvailable = !existingBookings?.some((booking) => {
+      const isSlotAvailable = !latestBookings?.some((booking) => {
         const startMinutes = timeToMinutes(booking.start_time);
         const endMinutes = timeToMinutes(booking.end_time);
         const selectedStartMinutes = timeToMinutes(selectedTime);
@@ -143,9 +163,8 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
       });
 
       if (!isSlotAvailable) {
-        alert('Sorry, this time slot was just booked. Please select another time.');
-        await loadAvailableSlots();
-        setSelectedTime('');
+        setTimeError('Sorry, this time slot was just booked. Please select another time.');
+        await loadExistingBookings();
         setIsSubmitting(false);
         return;
       }
@@ -163,7 +182,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
       });
 
       if (error) {
-        alert('Booking failed. Please try again.');
+        setTimeError('Booking failed. Please try again.');
         setIsSubmitting(false);
         return;
       }
@@ -184,8 +203,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
       setBookingComplete(true);
     } catch (error) {
       console.error('Booking error:', error);
-      alert('An error occurred. Please try again.');
-    } finally {
+      setTimeError('An error occurred. Please try again.');
       setIsSubmitting(false);
     }
   };
@@ -218,7 +236,6 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                 <p><strong>Service:</strong> {selectedService?.name}</p>
                 <p><strong>Date:</strong> {new Date(selectedDate).toLocaleDateString()}</p>
                 <p><strong>Time:</strong> {selectedTime}</p>
-                <p><strong>Duration:</strong> {selectedService?.duration_minutes} minutes</p>
               </div>
             </div>
             <button
@@ -316,11 +333,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                                 onClick={() => setSelectedService(service)}
                                 className="p-4 rounded-lg border-2 border-[#DDCBB7] hover:border-[#AD6B4B] cursor-pointer transition-all duration-300 hover:shadow-lg bg-white"
                               >
-                                <h4 className="font-bold text-[#264025] mb-2">{service.name}</h4>
-                                <div className="flex items-center justify-between text-sm text-[#82896E]">
-                                  <span>{service.duration_minutes} mins</span>
-                                  <span className="font-bold text-[#AD6B4B]">₹{service.price}</span>
-                                </div>
+                                <h4 className="font-bold text-[#264025]">{service.name}</h4>
                               </div>
                             ))}
                           </div>
@@ -336,11 +349,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                         onClick={() => setSelectedService(service)}
                         className="p-4 rounded-xl border-2 border-[#DDCBB7] hover:border-[#AD6B4B] cursor-pointer transition-all duration-300 hover:shadow-lg"
                       >
-                        <h3 className="font-bold text-[#264025] mb-2">{service.name}</h3>
-                        <div className="flex items-center justify-between text-sm text-[#82896E]">
-                          <span>{service.duration_minutes} mins</span>
-                          <span className="font-bold text-[#AD6B4B]">₹{service.price}</span>
-                        </div>
+                        <h3 className="font-bold text-[#264025]">{service.name}</h3>
                       </div>
                     ))}
                   </div>
@@ -353,7 +362,6 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                 <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Date & Time</h2>
                 <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
                   <p className="font-semibold text-[#264025]">Selected Service: {selectedService.name}</p>
-                  <p className="text-sm text-[#82896E]">Duration: {selectedService.duration_minutes} minutes • Price: ₹{selectedService.price}</p>
                 </div>
 
                 <div className="mb-6">
@@ -370,42 +378,58 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
 
                 {selectedDate && (
                   <div>
-                    <label className="block text-[#264025] font-semibold mb-2">Select Time</label>
-                    <p className="text-sm text-[#82896E] mb-4">
-                      Available time slots for {new Date(selectedDate).toLocaleDateString()}
-                    </p>
-                    {availableSlots.length === 0 ? (
-                      <div className="text-center py-8 bg-gray-50 rounded-lg">
-                        <p className="text-[#82896E]">Loading available slots...</p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
-                        {availableSlots.map((slot) => {
-                          const isBooked = bookedSlots.includes(slot);
-                          return (
-                            <button
-                              key={slot}
-                              onClick={() => !isBooked && setSelectedTime(slot)}
-                              disabled={isBooked}
-                              className={`px-3 py-4 rounded-lg font-semibold transition-all duration-300 relative text-sm ${
-                                isBooked
-                                  ? 'bg-red-50 text-red-400 cursor-not-allowed border-2 border-red-200'
-                                  : 'bg-white border-2 border-[#DDCBB7] hover:border-[#AD6B4B] text-[#264025] hover:bg-[#DDCBB7]/20 hover:shadow-md'
-                              }`}
+                    <div className="mb-6">
+                      <label className="block text-[#264025] font-semibold mb-2">
+                        Enter Your Preferred Time
+                      </label>
+                      <p className="text-sm text-[#82896E] mb-3">
+                        Shop hours: {shopOpenTime} - {shopCloseTime}
+                      </p>
+                      <input
+                        type="time"
+                        value={selectedTime}
+                        onChange={(e) => handleTimeChange(e.target.value)}
+                        min={shopOpenTime}
+                        max={shopCloseTime}
+                        className="w-full px-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg"
+                      />
+                      {timeError && (
+                        <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                          {timeError}
+                        </div>
+                      )}
+                      {selectedTime && !timeError && (
+                        <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
+                          Time slot available! Your appointment will be from {selectedTime} to {calculateEndTime(selectedTime, selectedService.duration_minutes)}
+                        </div>
+                      )}
+                    </div>
+
+                    {existingBookings.length > 0 && (
+                      <div className="bg-gray-50 rounded-xl p-4">
+                        <h4 className="font-semibold text-[#264025] mb-3">Already Booked Times Today:</h4>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {existingBookings.map((booking, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
                             >
-                              <div className="text-center">
-                                <div className="font-bold">{slot}</div>
-                                {isBooked && (
-                                  <div className="text-xs mt-1 font-normal">BOOKED</div>
-                                )}
+                              <div className="flex items-center space-x-2">
+                                <Clock size={16} className="text-[#82896E]" />
+                                <span className="text-[#264025] font-medium">
+                                  {booking.start_time} - {booking.end_time}
+                                </span>
                               </div>
-                            </button>
-                          );
-                        })}
+                              <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded-full">
+                                BOOKED
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
-                )}
+                )})
               </div>
             )}
 
@@ -415,7 +439,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                 <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
                   <p className="font-semibold text-[#264025]">{selectedService.name}</p>
                   <p className="text-sm text-[#82896E]">
-                    {new Date(selectedDate).toLocaleDateString()} at {selectedTime} • {selectedService.duration_minutes} minutes • ₹{selectedService.price}
+                    {new Date(selectedDate).toLocaleDateString()} at {selectedTime}
                   </p>
                 </div>
                 <div className="space-y-4">

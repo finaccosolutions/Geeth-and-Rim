@@ -234,20 +234,10 @@ export const Home = ({ onNavigate }: HomeProps) => {
                             {service.name}
                           </h4>
                           {service.description && (
-                            <p className="text-sm text-[#6B5A4A] mb-3 line-clamp-2 min-h-[2.5rem]">
+                            <p className="text-sm text-[#6B5A4A] line-clamp-3">
                               {service.description}
                             </p>
                           )}
-                          <div className="flex items-center justify-between pt-3 border-t border-[#E8D5C4]">
-                            <div className="flex items-center space-x-2 text-[#6B5A4A]">
-                              <Clock size={16} />
-                              <span className="text-sm font-medium">{service.duration_minutes} min</span>
-                            </div>
-                            <div className="flex items-center space-x-1 text-[#C17B5C] font-bold text-lg">
-                              <span>₹</span>
-                              <span>{service.price}</span>
-                            </div>
-                          </div>
                         </div>
                       </div>
                     ))}

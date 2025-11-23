@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Clock, IndianRupee, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Service } from '../types';
 
@@ -81,19 +81,9 @@ export const WeddingPackages = ({ onNavigate }: WeddingPackagesProps) => {
                     className="group flex items-center justify-between p-5 rounded-xl bg-gradient-to-r from-[#DDCBB7]/10 to-transparent border-2 border-[#DDCBB7] hover:border-[#AD6B4B] hover:shadow-lg transition-all duration-300 cursor-pointer"
                   >
                     <div className="flex-1">
-                      <h3 className="text-lg font-bold text-[#264025] mb-2 group-hover:text-[#AD6B4B] transition-colors duration-300">
+                      <h3 className="text-lg font-bold text-[#264025] group-hover:text-[#AD6B4B] transition-colors duration-300">
                         {service.name}
                       </h3>
-                      <div className="flex items-center space-x-4 text-sm">
-                        <div className="flex items-center space-x-1 text-[#82896E]">
-                          <Clock size={16} />
-                          <span>{service.duration_minutes} mins</span>
-                        </div>
-                        <div className="flex items-center space-x-1 text-[#AD6B4B] font-bold">
-                          <IndianRupee size={16} />
-                          <span>{service.price.toFixed(0)}</span>
-                        </div>
-                      </div>
                     </div>
                     <ChevronRight className="text-[#82896E] group-hover:text-[#AD6B4B] group-hover:translate-x-1 transition-all duration-300" size={24} />
                   </div>
