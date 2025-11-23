@@ -235,6 +235,11 @@ export const sendBookingEmail = async (bookingData: BookingEmailData): Promise<b
       from_name: emailSettings.from_name,
     };
 
+    console.log('Attempting to send emails to:', {
+      customer: emailPayload.to,
+      admin: adminEmailPayload.to
+    });
+
     const [customerEmailResponse, adminEmailResponse] = await Promise.all([
       fetch(`${supabaseUrl}/functions/v1/send-booking-email`, {
         method: 'POST',
@@ -243,6 +248,9 @@ export const sendBookingEmail = async (bookingData: BookingEmailData): Promise<b
           'Authorization': `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify(emailPayload),
+      }).catch(err => {
+        console.error('Customer email fetch error:', err);
+        return null;
       }),
       fetch(`${supabaseUrl}/functions/v1/send-booking-email`, {
         method: 'POST',
@@ -251,24 +259,40 @@ export const sendBookingEmail = async (bookingData: BookingEmailData): Promise<b
           'Authorization': `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify(adminEmailPayload),
+      }).catch(err => {
+        console.error('Admin email fetch error:', err);
+        return null;
       }),
     ]);
 
-    const customerResult = await customerEmailResponse.json();
-    const adminResult = await adminEmailResponse.json();
+    if (!customerEmailResponse || !adminEmailResponse) {
+      console.error('Email service not reachable');
+      return false;
+    }
 
-    console.log('Customer email response:', customerEmailResponse.status, customerResult);
-    console.log('Admin email response:', adminEmailResponse.status, adminResult);
+    const customerResult = await customerEmailResponse.json().catch(() => ({ error: 'Invalid response' }));
+    const adminResult = await adminEmailResponse.json().catch(() => ({ error: 'Invalid response' }));
+
+    console.log('Customer email response:', {
+      status: customerEmailResponse.status,
+      ok: customerEmailResponse.ok,
+      result: customerResult
+    });
+    console.log('Admin email response:', {
+      status: adminEmailResponse.status,
+      ok: adminEmailResponse.ok,
+      result: adminResult
+    });
 
     if (customerEmailResponse.ok && adminEmailResponse.ok) {
-      console.log('Booking emails sent successfully');
+      console.log('Booking emails sent successfully to customer and admin');
       return true;
     } else {
-      console.error('Failed to send booking emails', {
+      console.error('Failed to send booking emails:', {
         customerStatus: customerEmailResponse.status,
         adminStatus: adminEmailResponse.status,
-        customerResult,
-        adminResult
+        customerError: customerResult,
+        adminError: adminResult
       });
       return false;
     }

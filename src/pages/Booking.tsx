@@ -46,10 +46,12 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   }, []);
 
   useEffect(() => {
-    if (selectedDate && selectedService) {
+    if (selectedDate) {
       loadExistingBookings();
+    } else {
+      setExistingBookings([]);
     }
-  }, [selectedDate, selectedService]);
+  }, [selectedDate]);
 
   const loadData = async () => {
     const [servicesResult, categoriesResult] = await Promise.all([
@@ -62,30 +64,30 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   };
 
   const loadExistingBookings = async () => {
-    if (!selectedDate || !selectedService) return;
+    if (!selectedDate) return;
 
-    console.log('Loading bookings for date:', selectedDate, 'service:', selectedService.id);
+    console.log('Loading bookings for date:', selectedDate);
 
     const [bookingsResult, blockedResult] = await Promise.all([
       supabase
         .from('bookings')
-        .select('start_time, end_time')
+        .select('start_time, end_time, service_id')
         .eq('booking_date', selectedDate)
         .neq('status', 'cancelled')
         .order('start_time', { ascending: true }),
       supabase
         .from('blocked_time_slots')
-        .select('start_time, end_time, reason')
+        .select('start_time, end_time, reason, service_id')
         .eq('blocked_date', selectedDate)
-        .eq('service_id', selectedService.id)
     ]);
 
-    console.log('Bookings result:', bookingsResult);
-    console.log('Blocked result:', blockedResult);
+    console.log('Raw bookings result:', bookingsResult);
+    console.log('Raw blocked result:', blockedResult);
 
     const allBookings: BookingTimeRange[] = [];
 
-    if (bookingsResult.data) {
+    if (bookingsResult.data && bookingsResult.data.length > 0) {
+      console.log(`Found ${bookingsResult.data.length} bookings for ${selectedDate}`);
       bookingsResult.data.forEach(booking => {
         allBookings.push({
           start_time: booking.start_time,
@@ -93,9 +95,12 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
           type: 'booking'
         });
       });
+    } else {
+      console.log('No bookings found for this date');
     }
 
-    if (blockedResult.data) {
+    if (blockedResult.data && blockedResult.data.length > 0) {
+      console.log(`Found ${blockedResult.data.length} blocked slots for ${selectedDate}`);
       blockedResult.data.forEach(blocked => {
         allBookings.push({
           start_time: blocked.start_time,
@@ -104,10 +109,15 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
           reason: blocked.reason
         });
       });
+    } else {
+      console.log('No blocked slots found for this date');
     }
 
     allBookings.sort((a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time));
-    console.log('Total bookings loaded:', allBookings.length, allBookings);
+    console.log('Total bookings loaded:', allBookings.length);
+    if (allBookings.length > 0) {
+      console.log('Booked time slots:', allBookings);
+    }
     setExistingBookings(allBookings);
   };
 
@@ -223,7 +233,8 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         return;
       }
 
-      const { error } = await supabase.from('bookings').insert({
+      console.log('Creating booking in database...');
+      const { error, data: bookingData } = await supabase.from('bookings').insert({
         service_id: selectedService.id,
         customer_name: formData.name,
         customer_email: formData.email,
@@ -233,13 +244,17 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         end_time: endTime,
         status: 'confirmed',
         notes: formData.notes,
-      });
+      }).select();
 
       if (error) {
+        console.error('Booking insertion error:', error);
         setIsSubmitting(false);
         alert('Booking failed. Please try again.');
         return;
       }
+
+      console.log('Booking created successfully:', bookingData);
+      console.log('Attempting to send confirmation emails...');
 
       const emailSent = await sendBookingEmail({
         customerName: formData.name,
@@ -254,7 +269,11 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         status: 'confirmed',
       });
 
-      console.log('Email sent status:', emailSent);
+      if (emailSent) {
+        console.log('Emails sent successfully');
+      } else {
+        console.warn('Email sending failed, but booking was saved');
+      }
 
       setBookingComplete(true);
     } catch (error) {
@@ -574,7 +593,6 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                 <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Date & Time</h2>
                 <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
                   <p className="font-semibold text-[#264025]">Selected Service: {selectedService.name}</p>
-                  <p className="text-sm text-[#82896E]">Duration: {selectedService.duration_minutes} minutes • Price: ₹{selectedService.price}</p>
                 </div>
 
                 <div className="mb-6">
