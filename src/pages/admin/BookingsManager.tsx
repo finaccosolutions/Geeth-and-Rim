@@ -4,6 +4,14 @@ import { supabase } from '../../lib/supabase';
 import { sendBookingEmail } from '../../lib/emailService';
 import { Booking, Service } from '../../types';
 
+const formatDateDDMMYYYY = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
 export const BookingsManager = () => {
   const [bookings, setBookings] = useState<(Booking & { service?: Service })[]>([]);
   const [filter, setFilter] = useState<string>('all');
@@ -130,7 +138,7 @@ export const BookingsManager = () => {
               {filteredBookings.map((booking) => (
                 <tr key={booking.id} className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="py-3 px-4">
-                    {new Date(booking.booking_date).toLocaleDateString()}
+                    {formatDateDDMMYYYY(booking.booking_date)}
                   </td>
                   <td className="py-3 px-4">{booking.start_time}</td>
                   <td className="py-3 px-4">
@@ -203,7 +211,7 @@ export const BookingsManager = () => {
               <div>
                 <label className="text-sm font-semibold text-gray-600">Date & Time</label>
                 <p className="text-[#264025]">
-                  {new Date(selectedBooking.booking_date).toLocaleDateString()} at{' '}
+                  {formatDateDDMMYYYY(selectedBooking.booking_date)} at{' '}
                   {selectedBooking.start_time}
                 </p>
               </div>
