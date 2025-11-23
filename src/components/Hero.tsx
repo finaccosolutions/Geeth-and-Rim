@@ -1,130 +1,98 @@
-import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { HeroImage } from '../types';
+import { Sparkles } from 'lucide-react';
 
 interface HeroProps {
   onBookNow: () => void;
 }
 
 export const Hero = ({ onBookNow }: HeroProps) => {
-  const [images, setImages] = useState<HeroImage[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
-    loadHeroImages();
-  }, []);
-
-  const loadHeroImages = async () => {
-    const { data, error } = await supabase
-      .from('hero_images')
-      .select('*')
-      .eq('is_active', true)
-      .order('display_order');
-
-    if (!error && data && data.length > 0) {
-      setImages(data);
-    } else {
-      setImages([{
-        id: '1',
-        title: 'Welcome',
-        image_url: 'https://images.pexels.com/photos/3993449/pexels-photo-3993449.jpeg?auto=compress&cs=tinysrgb&w=1920',
-        is_active: true,
-        display_order: 1,
-        created_at: new Date().toISOString()
-      }]);
-    }
-  };
-
-  useEffect(() => {
-    if (images.length > 1) {
-      const timer = setInterval(() => {
-        setCurrentIndex((prev) => (prev + 1) % images.length);
-      }, 5000);
-      return () => clearInterval(timer);
-    }
-  }, [images.length]);
-
-  const goToPrevious = () => {
-    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
-
-  const goToNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % images.length);
-  };
-
-  if (images.length === 0) return null;
-
   return (
-    <div className="relative h-screen overflow-hidden">
-      {images.map((image, index) => (
-        <div
-          key={image.id}
-          className={`absolute inset-0 transition-opacity duration-1000 ${
-            index === currentIndex ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
-          <div
-            className="absolute inset-0 bg-cover bg-center transform scale-105 transition-transform duration-[5000ms]"
-            style={{ backgroundImage: `url(${image.image_url})` }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#264025]/90 via-[#264025]/70 to-transparent" />
-        </div>
-      ))}
+    <div className="relative min-h-screen bg-gradient-to-br from-[#F5E6D3] via-[#E8D5C4] to-[#D4C4B0] overflow-hidden">
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-[#C17B5C] rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#8B9D7F] rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-[#B89968] rounded-full blur-3xl"></div>
+      </div>
 
-      <div className="relative z-10 h-full flex items-center">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl animate-fade-in">
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-              Your Beauty,
-              <br />
-              <span className="text-[#AD6B4B]">Our Passion</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-[#DDCBB7] mb-8 leading-relaxed">
-              Experience premium salon services in a luxurious and relaxing environment.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <button
-                onClick={onBookNow}
-                className="bg-[#AD6B4B] text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-[#7B4B36] transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl"
-              >
-                Book Appointment
-              </button>
-              <button className="bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-white/20 transition-all duration-300 border-2 border-white/30">
-                View Services
-              </button>
+      <div className="relative z-10 container mx-auto px-4 pt-32 pb-16 flex flex-col lg:flex-row items-center justify-between gap-12">
+        <div className="flex-1 max-w-2xl">
+          <div className="inline-flex items-center space-x-2 bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full mb-6">
+            <Sparkles className="text-[#C17B5C]" size={20} />
+            <span className="text-[#5A4A3A] font-medium">Premium Salon Experience</span>
+          </div>
+
+          <h1 className="text-5xl md:text-7xl font-bold text-[#3D2E1F] mb-6 leading-tight">
+            Discover Your
+            <br />
+            <span className="text-[#C17B5C]">Natural Beauty</span>
+          </h1>
+
+          <p className="text-xl md:text-2xl text-[#6B5A4A] mb-8 leading-relaxed">
+            Where elegance meets expertise. Experience transformative beauty treatments in a serene, luxurious environment.
+          </p>
+
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={onBookNow}
+              className="bg-[#C17B5C] text-white px-10 py-4 rounded-full text-lg font-semibold hover:bg-[#A6684C] transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl"
+            >
+              Book Your Appointment
+            </button>
+            <button
+              onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
+              className="bg-white text-[#C17B5C] px-10 py-4 rounded-full text-lg font-semibold hover:bg-[#3D2E1F] hover:text-white transition-all duration-300 border-2 border-[#C17B5C]"
+            >
+              Explore Services
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-6 mt-12 pt-12 border-t border-[#6B5A4A]/20">
+            <div>
+              <div className="text-3xl font-bold text-[#C17B5C] mb-1">15+</div>
+              <div className="text-sm text-[#6B5A4A]">Expert Stylists</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-[#C17B5C] mb-1">5000+</div>
+              <div className="text-sm text-[#6B5A4A]">Happy Clients</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-[#C17B5C] mb-1">12+</div>
+              <div className="text-sm text-[#6B5A4A]">Years Experience</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 relative max-w-xl">
+          <div className="relative">
+            <div className="absolute -inset-4 bg-gradient-to-br from-[#C17B5C]/20 to-[#8B9D7F]/20 rounded-3xl blur-2xl"></div>
+            <div className="relative grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <img
+                  src="https://images.pexels.com/photos/3065171/pexels-photo-3065171.jpeg?auto=compress&cs=tinysrgb&w=600"
+                  alt="Hair Styling"
+                  className="rounded-2xl shadow-2xl w-full h-64 object-cover transform hover:scale-105 transition-transform duration-500"
+                />
+                <img
+                  src="https://images.pexels.com/photos/3997982/pexels-photo-3997982.jpeg?auto=compress&cs=tinysrgb&w=600"
+                  alt="Facial Treatment"
+                  className="rounded-2xl shadow-2xl w-full h-48 object-cover transform hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+              <div className="space-y-4 mt-8">
+                <img
+                  src="https://images.pexels.com/photos/1697214/pexels-photo-1697214.jpeg?auto=compress&cs=tinysrgb&w=600"
+                  alt="Bridal Makeup"
+                  className="rounded-2xl shadow-2xl w-full h-48 object-cover transform hover:scale-105 transition-transform duration-500"
+                />
+                <img
+                  src="https://images.pexels.com/photos/3738379/pexels-photo-3738379.jpeg?auto=compress&cs=tinysrgb&w=600"
+                  alt="Hair Treatment"
+                  className="rounded-2xl shadow-2xl w-full h-64 object-cover transform hover:scale-105 transition-transform duration-500"
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      {images.length > 1 && (
-        <>
-          <button
-            onClick={goToPrevious}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-all duration-300 group"
-          >
-            <ChevronLeft className="text-white group-hover:scale-110 transition-transform" size={24} />
-          </button>
-          <button
-            onClick={goToNext}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-all duration-300 group"
-          >
-            <ChevronRight className="text-white group-hover:scale-110 transition-transform" size={24} />
-          </button>
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex space-x-2">
-            {images.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                  index === currentIndex ? 'bg-[#AD6B4B] w-8' : 'bg-white/50 hover:bg-white/70'
-                }`}
-              />
-            ))}
-          </div>
-        </>
-      )}
     </div>
   );
 };
