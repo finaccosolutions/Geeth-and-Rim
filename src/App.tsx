@@ -12,6 +12,9 @@ import { Contact } from './pages/Contact';
 import { Booking } from './pages/Booking';
 import { Auth } from './pages/Auth';
 import { Account } from './pages/Account';
+import { Profile } from './pages/Profile';
+import { MyBookings } from './pages/MyBookings';
+import { Settings } from './pages/Settings';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { Service } from './types';
@@ -60,10 +63,6 @@ function AppContent() {
     return <Auth onNavigate={handleNavigate} />;
   }
 
-  if (currentPage === 'account') {
-    return <Account onNavigate={handleNavigate} />;
-  }
-
   return (
     <div className="min-h-screen flex flex-col">
       <Header currentPage={currentPage} onNavigate={handleNavigate} />
@@ -78,6 +77,9 @@ function AppContent() {
           <Booking preSelectedService={bookingData} onNavigate={handleNavigate} />
         )}
         {currentPage === 'account' && <Account onNavigate={handleNavigate} />}
+        {currentPage === 'profile' && <Profile onNavigate={handleNavigate} />}
+        {currentPage === 'mybookings' && <MyBookings onNavigate={handleNavigate} />}
+        {currentPage === 'settings' && <Settings onNavigate={handleNavigate} />}
       </main>
       <Footer />
       <WhatsAppButton />

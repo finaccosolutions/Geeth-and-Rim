@@ -133,7 +133,7 @@ export const Header = ({ currentPage, onNavigate }: HeaderProps) => {
                         <button
                           onClick={() => {
                             setIsAccountMenuOpen(false);
-                            onNavigate('account');
+                            onNavigate('profile');
                           }}
                           className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-[#DDCBB7]/20 transition-colors text-left"
                         >
@@ -143,7 +143,7 @@ export const Header = ({ currentPage, onNavigate }: HeaderProps) => {
                         <button
                           onClick={() => {
                             setIsAccountMenuOpen(false);
-                            onNavigate('account');
+                            onNavigate('mybookings');
                           }}
                           className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-[#DDCBB7]/20 transition-colors text-left"
                         >
@@ -153,7 +153,7 @@ export const Header = ({ currentPage, onNavigate }: HeaderProps) => {
                         <button
                           onClick={() => {
                             setIsAccountMenuOpen(false);
-                            onNavigate('account');
+                            onNavigate('settings');
                           }}
                           className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-[#DDCBB7]/20 transition-colors text-left"
                         >
