@@ -12,8 +12,9 @@ interface BookingProps {
 interface BookingTimeRange {
   start_time: string;
   end_time: string;
-  type: 'booking' | 'blocked';
+  type: 'booking' | 'blocked' | 'completed';
   reason?: string;
+  status?: string;
 }
 
 export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
@@ -69,12 +70,18 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
 
     console.log('Loading bookings for date:', selectedDate);
 
-    const [bookingsResult, blockedResult] = await Promise.all([
+    const [bookingsResult, completedResult, blockedResult] = await Promise.all([
       supabase
         .from('bookings')
         .select('start_time, end_time, service_id, status')
         .eq('booking_date', selectedDate)
         .in('status', ['confirmed', 'pending'])
+        .order('start_time', { ascending: true }),
+      supabase
+        .from('bookings')
+        .select('start_time, end_time, service_id, status')
+        .eq('booking_date', selectedDate)
+        .eq('status', 'completed')
         .order('start_time', { ascending: true }),
       supabase
         .from('blocked_time_slots')
@@ -83,6 +90,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     ]);
 
     console.log('Bookings result:', bookingsResult);
+    console.log('Completed result:', completedResult);
     console.log('Blocked result:', blockedResult);
 
     const allBookings: BookingTimeRange[] = [];
@@ -93,7 +101,20 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         allBookings.push({
           start_time: booking.start_time,
           end_time: booking.end_time,
-          type: 'booking'
+          type: 'booking',
+          status: booking.status
+        });
+      });
+    }
+
+    if (completedResult.data && completedResult.data.length > 0) {
+      console.log(`Found ${completedResult.data.length} completed bookings for ${selectedDate}`);
+      completedResult.data.forEach(booking => {
+        allBookings.push({
+          start_time: booking.start_time,
+          end_time: booking.end_time,
+          type: 'completed',
+          status: 'completed'
         });
       });
     }
@@ -349,23 +370,34 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
               const left = ((startMinutes - openMinutes) / totalMinutes) * 100;
               const width = ((endMinutes - startMinutes) / totalMinutes) * 100;
 
+              const getBookingColor = () => {
+                if (booking.type === 'blocked') return 'bg-gray-500';
+                if (booking.type === 'completed') return 'bg-blue-500';
+                return 'bg-red-500';
+              };
+
+              const getBookingLabel = () => {
+                if (booking.type === 'blocked') return `Blocked: ${booking.reason || 'No reason'}`;
+                if (booking.type === 'completed') return `Completed: ${booking.start_time.substring(0, 5)} - ${booking.end_time.substring(0, 5)}`;
+                return `Booked: ${booking.start_time.substring(0, 5)} - ${booking.end_time.substring(0, 5)}`;
+              };
+
               return (
                 <div
                   key={`${booking.type}-${index}`}
-                  className={`absolute top-3 bottom-3 ${
-                    booking.type === 'blocked' ? 'bg-gray-500' : 'bg-red-500'
-                  } rounded shadow-lg border-2 border-white transition-all hover:scale-y-110 hover:z-10 cursor-pointer group`}
+                  className={`absolute top-3 bottom-3 ${getBookingColor()} rounded shadow-lg border-2 border-white transition-all hover:scale-y-110 hover:z-10 cursor-pointer group`}
                   style={{
                     left: `${left}%`,
                     width: `${Math.max(width, 0.5)}%`,
                     minWidth: '2px',
                   }}
-                  title={booking.type === 'blocked' ? `Blocked: ${booking.reason || 'No reason'}` : `Booked: ${booking.start_time.substring(0, 5)} - ${booking.end_time.substring(0, 5)}`}
+                  title={getBookingLabel()}
                 >
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 rounded px-1">
                     <div>{booking.start_time.substring(0, 5)}</div>
                     <div>-</div>
                     <div>{booking.end_time.substring(0, 5)}</div>
+                    {booking.type === 'completed' && <div className="text-[10px] mt-0.5">DONE</div>}
                   </div>
                 </div>
               );
@@ -397,6 +429,10 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
               <span className="text-gray-700 font-medium">Booked</span>
             </div>
             <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 bg-blue-500 rounded"></div>
+              <span className="text-gray-700 font-medium">Completed</span>
+            </div>
+            <div className="flex items-center space-x-2">
               <div className="w-6 h-6 bg-gray-500 rounded"></div>
               <span className="text-gray-700 font-medium">Blocked</span>
             </div>
@@ -416,24 +452,31 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                   Already Booked Slots
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {existingBookings.map((booking, index) => (
-                    <div
-                      key={`list-${index}`}
-                      className={`text-sm px-3 py-2 rounded-lg font-semibold ${
-                        booking.type === 'blocked'
-                          ? 'bg-gray-200 text-gray-800 border-2 border-gray-400'
-                          : 'bg-red-100 text-red-800 border-2 border-red-400'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <Clock size={14} className="flex-shrink-0" />
-                        <span>{booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}</span>
+                  {existingBookings.map((booking, index) => {
+                    const getListItemStyle = () => {
+                      if (booking.type === 'blocked') return 'bg-gray-200 text-gray-800 border-2 border-gray-400';
+                      if (booking.type === 'completed') return 'bg-blue-100 text-blue-800 border-2 border-blue-400';
+                      return 'bg-red-100 text-red-800 border-2 border-red-400';
+                    };
+
+                    return (
+                      <div
+                        key={`list-${index}`}
+                        className={`text-sm px-3 py-2 rounded-lg font-semibold ${getListItemStyle()}`}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <Clock size={14} className="flex-shrink-0" />
+                          <span>{booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}</span>
+                          {booking.type === 'completed' && (
+                            <span className="text-xs ml-2 opacity-75">(Done)</span>
+                          )}
+                        </div>
+                        {booking.type === 'blocked' && booking.reason && (
+                          <div className="text-xs mt-1 opacity-75 italic">{booking.reason}</div>
+                        )}
                       </div>
-                      {booking.type === 'blocked' && booking.reason && (
-                        <div className="text-xs mt-1 opacity-75 italic">{booking.reason}</div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

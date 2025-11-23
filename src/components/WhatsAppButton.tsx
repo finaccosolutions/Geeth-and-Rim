@@ -59,10 +59,6 @@ export const WhatsAppButton = () => {
           <div className="relative flex items-center justify-center w-full h-full">
             <MessageCircle className="text-white" size={32} strokeWidth={2} />
           </div>
-
-          <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center animate-bounce">
-            <span className="text-white text-xs font-bold">!</span>
-          </div>
         </button>
 
         <div className="absolute inset-0 rounded-full border-4 border-[#25D366] animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite] opacity-50"></div>
