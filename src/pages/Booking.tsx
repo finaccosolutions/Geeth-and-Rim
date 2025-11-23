@@ -27,7 +27,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
 
-  const step = !selectedService ? 1 : !selectedDate ? 2 : !selectedTime ? 2 : 3;
+  const step = !selectedService ? 1 : !selectedTime ? 2 : 3;
 
   useEffect(() => {
     if (!preSelectedService) {
@@ -312,55 +312,64 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
               </div>
             )}
 
-            {selectedService && !selectedDate && (
+            {selectedService && !selectedTime && (
               <div>
-                <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Date</h2>
+                <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Date & Time</h2>
                 <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
                   <p className="font-semibold text-[#264025]">Selected Service: {selectedService.name}</p>
                   <p className="text-sm text-[#82896E]">Duration: {selectedService.duration_minutes} minutes • Price: ₹{selectedService.price}</p>
                 </div>
-                <input
-                  type="date"
-                  min={minDate}
-                  max={maxDate}
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg"
-                />
-              </div>
-            )}
 
-            {selectedService && selectedDate && !selectedTime && (
-              <div>
-                <h2 className="text-2xl font-bold text-[#264025] mb-6">Select Time</h2>
-                <div className="mb-6 p-4 bg-[#DDCBB7]/20 rounded-xl">
-                  <p className="font-semibold text-[#264025]">{selectedService.name}</p>
-                  <p className="text-sm text-[#82896E]">
-                    {new Date(selectedDate).toLocaleDateString()} • {selectedService.duration_minutes} minutes • ₹{selectedService.price}
-                  </p>
+                <div className="mb-6">
+                  <label className="block text-[#264025] font-semibold mb-2">Select Date</label>
+                  <input
+                    type="date"
+                    min={minDate}
+                    max={maxDate}
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none transition-colors duration-300 text-lg"
+                  />
                 </div>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto">
-                  {availableSlots.map((slot) => {
-                    const isBooked = bookedSlots.includes(slot);
-                    return (
-                      <button
-                        key={slot}
-                        onClick={() => !isBooked && setSelectedTime(slot)}
-                        disabled={isBooked}
-                        className={`px-4 py-3 rounded-lg font-semibold transition-all duration-300 relative ${
-                          isBooked
-                            ? 'bg-red-100 text-red-400 cursor-not-allowed'
-                            : 'bg-white border-2 border-[#DDCBB7] hover:border-[#AD6B4B] text-[#264025] hover:bg-[#DDCBB7]/20'
-                        }`}
-                      >
-                        {slot}
-                        {isBooked && (
-                          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+
+                {selectedDate && (
+                  <div>
+                    <label className="block text-[#264025] font-semibold mb-2">Select Time</label>
+                    <p className="text-sm text-[#82896E] mb-4">
+                      Available time slots for {new Date(selectedDate).toLocaleDateString()}
+                    </p>
+                    {availableSlots.length === 0 ? (
+                      <div className="text-center py-8 bg-gray-50 rounded-lg">
+                        <p className="text-[#82896E]">Loading available slots...</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
+                        {availableSlots.map((slot) => {
+                          const isBooked = bookedSlots.includes(slot);
+                          return (
+                            <button
+                              key={slot}
+                              onClick={() => !isBooked && setSelectedTime(slot)}
+                              disabled={isBooked}
+                              className={`px-3 py-4 rounded-lg font-semibold transition-all duration-300 relative text-sm ${
+                                isBooked
+                                  ? 'bg-red-50 text-red-400 cursor-not-allowed border-2 border-red-200'
+                                  : 'bg-white border-2 border-[#DDCBB7] hover:border-[#AD6B4B] text-[#264025] hover:bg-[#DDCBB7]/20 hover:shadow-md'
+                              }`}
+                            >
+                              <div className="text-center">
+                                <div className="font-bold">{slot}</div>
+                                {isBooked && (
+                                  <div className="text-xs mt-1 font-normal">BOOKED</div>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

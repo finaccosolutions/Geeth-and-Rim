@@ -1,10 +1,39 @@
+import { useState, useEffect } from 'react';
 import { Sparkles } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface HeroProps {
   onBookNow: () => void;
 }
 
 export const Hero = ({ onBookNow }: HeroProps) => {
+  const [heroImages, setHeroImages] = useState<string[]>([]);
+
+  useEffect(() => {
+    loadHeroImages();
+  }, []);
+
+  const loadHeroImages = async () => {
+    const { data } = await supabase
+      .from('site_images')
+      .select('image_url, display_order')
+      .eq('category', 'hero_grid')
+      .eq('is_active', true)
+      .order('display_order')
+      .limit(4);
+
+    if (data && data.length === 4) {
+      setHeroImages(data.map(img => img.image_url));
+    } else {
+      setHeroImages([
+        'https://images.pexels.com/photos/3065171/pexels-photo-3065171.jpeg?auto=compress&cs=tinysrgb&w=600',
+        'https://images.pexels.com/photos/3997982/pexels-photo-3997982.jpeg?auto=compress&cs=tinysrgb&w=600',
+        'https://images.pexels.com/photos/1697214/pexels-photo-1697214.jpeg?auto=compress&cs=tinysrgb&w=600',
+        'https://images.pexels.com/photos/3738379/pexels-photo-3738379.jpeg?auto=compress&cs=tinysrgb&w=600',
+      ]);
+    }
+  };
+
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-[#F5E6D3] via-[#E8D5C4] to-[#D4C4B0] overflow-hidden">
       <div className="absolute inset-0 opacity-10">
@@ -67,24 +96,24 @@ export const Hero = ({ onBookNow }: HeroProps) => {
             <div className="relative grid grid-cols-2 gap-4">
               <div className="space-y-4">
                 <img
-                  src="https://images.pexels.com/photos/3065171/pexels-photo-3065171.jpeg?auto=compress&cs=tinysrgb&w=600"
+                  src={heroImages[0] || 'https://images.pexels.com/photos/3065171/pexels-photo-3065171.jpeg?auto=compress&cs=tinysrgb&w=600'}
                   alt="Hair Styling"
                   className="rounded-2xl shadow-2xl w-full h-64 object-cover transform hover:scale-105 transition-transform duration-500"
                 />
                 <img
-                  src="https://images.pexels.com/photos/3997982/pexels-photo-3997982.jpeg?auto=compress&cs=tinysrgb&w=600"
+                  src={heroImages[1] || 'https://images.pexels.com/photos/3997982/pexels-photo-3997982.jpeg?auto=compress&cs=tinysrgb&w=600'}
                   alt="Facial Treatment"
                   className="rounded-2xl shadow-2xl w-full h-48 object-cover transform hover:scale-105 transition-transform duration-500"
                 />
               </div>
               <div className="space-y-4 mt-8">
                 <img
-                  src="https://images.pexels.com/photos/1697214/pexels-photo-1697214.jpeg?auto=compress&cs=tinysrgb&w=600"
+                  src={heroImages[2] || 'https://images.pexels.com/photos/1697214/pexels-photo-1697214.jpeg?auto=compress&cs=tinysrgb&w=600'}
                   alt="Bridal Makeup"
                   className="rounded-2xl shadow-2xl w-full h-48 object-cover transform hover:scale-105 transition-transform duration-500"
                 />
                 <img
-                  src="https://images.pexels.com/photos/3738379/pexels-photo-3738379.jpeg?auto=compress&cs=tinysrgb&w=600"
+                  src={heroImages[3] || 'https://images.pexels.com/photos/3738379/pexels-photo-3738379.jpeg?auto=compress&cs=tinysrgb&w=600'}
                   alt="Hair Treatment"
                   className="rounded-2xl shadow-2xl w-full h-64 object-cover transform hover:scale-105 transition-transform duration-500"
                 />

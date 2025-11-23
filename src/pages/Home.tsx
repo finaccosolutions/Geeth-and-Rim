@@ -8,10 +8,20 @@ interface HomeProps {
   onNavigate: (page: string, data?: unknown) => void;
 }
 
+interface SiteImage {
+  image_key: string;
+  image_url: string;
+  title: string;
+  category: string;
+}
+
 export const Home = ({ onNavigate }: HomeProps) => {
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [categoryImages, setCategoryImages] = useState<Record<string, string>>({});
+  const [galleryImages, setGalleryImages] = useState<SiteImage[]>([]);
+  const [aboutImage, setAboutImage] = useState<string>('');
   const categoriesScrollRef = useRef<HTMLDivElement>(null);
   const servicesScrollRef = useRef<HTMLDivElement>(null);
 
@@ -26,13 +36,31 @@ export const Home = ({ onNavigate }: HomeProps) => {
   }, [categories]);
 
   const loadData = async () => {
-    const [categoriesResult, servicesResult] = await Promise.all([
+    const [categoriesResult, servicesResult, imagesResult] = await Promise.all([
       supabase.from('service_categories').select('*').order('display_order'),
       supabase.from('services').select('*').eq('is_active', true).order('display_order'),
+      supabase.from('site_images').select('*').eq('is_active', true),
     ]);
 
     if (categoriesResult.data) setCategories(categoriesResult.data);
     if (servicesResult.data) setServices(servicesResult.data);
+
+    if (imagesResult.data) {
+      const categoryImagesMap: Record<string, string> = {};
+      const categoryImgs = imagesResult.data.filter((img) => img.category === 'category');
+      categoryImgs.forEach((img) => {
+        categoryImagesMap[img.title] = img.image_url;
+      });
+      setCategoryImages(categoryImagesMap);
+
+      const homeGalleryImgs = imagesResult.data.filter(
+        (img) => img.category === 'home_gallery'
+      ).sort((a, b) => a.display_order - b.display_order);
+      setGalleryImages(homeGalleryImgs);
+
+      const aboutImg = imagesResult.data.find((img) => img.image_key === 'about_journey');
+      if (aboutImg) setAboutImage(aboutImg.image_url);
+    }
   };
 
   const getServicesByCategory = (categoryId: string) => {
@@ -59,15 +87,6 @@ export const Home = ({ onNavigate }: HomeProps) => {
     }
   };
 
-  const categoryImages: Record<string, string> = {
-    'Haircut & Styling': 'https://images.pexels.com/photos/3065171/pexels-photo-3065171.jpeg?auto=compress&cs=tinysrgb&w=400',
-    'Face Care': 'https://images.pexels.com/photos/3997982/pexels-photo-3997982.jpeg?auto=compress&cs=tinysrgb&w=400',
-    'Wedding Packages': 'https://images.pexels.com/photos/1697214/pexels-photo-1697214.jpeg?auto=compress&cs=tinysrgb&w=400',
-    'Hair Treatments': 'https://images.pexels.com/photos/3738379/pexels-photo-3738379.jpeg?auto=compress&cs=tinysrgb&w=400',
-    'Body Care': 'https://images.pexels.com/photos/3757952/pexels-photo-3757952.jpeg?auto=compress&cs=tinysrgb&w=400',
-    'Hair Removal': 'https://images.pexels.com/photos/5069432/pexels-photo-5069432.jpeg?auto=compress&cs=tinysrgb&w=400',
-    'Nails': 'https://images.pexels.com/photos/1582750/pexels-photo-1582750.jpeg?auto=compress&cs=tinysrgb&w=400',
-  };
 
   const selectedServices = selectedCategory ? getServicesByCategory(selectedCategory) : [];
 
@@ -280,7 +299,7 @@ export const Home = ({ onNavigate }: HomeProps) => {
               <div className="relative">
                 <div className="absolute -inset-4 bg-gradient-to-br from-[#C17B5C]/20 to-[#8B9D7F]/20 rounded-3xl -z-10" />
                 <img
-                  src="https://images.pexels.com/photos/3992868/pexels-photo-3992868.jpeg?auto=compress&cs=tinysrgb&w=800"
+                  src={aboutImage || 'https://images.pexels.com/photos/3992868/pexels-photo-3992868.jpeg?auto=compress&cs=tinysrgb&w=800'}
                   alt="Professional salon styling"
                   className="rounded-2xl shadow-2xl w-full h-auto object-cover"
                 />
@@ -335,24 +354,15 @@ export const Home = ({ onNavigate }: HomeProps) => {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[
-                'https://images.pexels.com/photos/3992868/pexels-photo-3992868.jpeg?auto=compress&cs=tinysrgb&w=400',
-                'https://images.pexels.com/photos/3738379/pexels-photo-3738379.jpeg?auto=compress&cs=tinysrgb&w=400',
-                'https://images.pexels.com/photos/1697214/pexels-photo-1697214.jpeg?auto=compress&cs=tinysrgb&w=400',
-                'https://images.pexels.com/photos/3997982/pexels-photo-3997982.jpeg?auto=compress&cs=tinysrgb&w=400',
-                'https://images.pexels.com/photos/3065171/pexels-photo-3065171.jpeg?auto=compress&cs=tinysrgb&w=400',
-                'https://images.pexels.com/photos/3065209/pexels-photo-3065209.jpeg?auto=compress&cs=tinysrgb&w=400',
-                'https://images.pexels.com/photos/1582750/pexels-photo-1582750.jpeg?auto=compress&cs=tinysrgb&w=400',
-                'https://images.pexels.com/photos/3373736/pexels-photo-3373736.jpeg?auto=compress&cs=tinysrgb&w=400',
-              ].map((img, index) => (
+              {galleryImages.map((img, index) => (
                 <div
-                  key={index}
+                  key={img.image_key || index}
                   className="relative overflow-hidden rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 aspect-square group cursor-pointer"
                   onClick={() => onNavigate('gallery')}
                 >
                   <img
-                    src={img}
-                    alt={`Gallery ${index + 1}`}
+                    src={img.image_url}
+                    alt={img.title || `Gallery ${index + 1}`}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#3D2E1F]/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
