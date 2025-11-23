@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Hero } from '../components/Hero';
 import { supabase } from '../lib/supabase';
 import { Service, ServiceCategory } from '../types';
-import { Scissors, Sparkles, Heart, Flower2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface HomeProps {
   onNavigate: (page: string, data?: unknown) => void;
@@ -11,6 +11,8 @@ interface HomeProps {
 export const Home = ({ onNavigate }: HomeProps) => {
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadData();
@@ -30,186 +32,239 @@ export const Home = ({ onNavigate }: HomeProps) => {
     return services.filter((s) => s.category_id === categoryId);
   };
 
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 400;
+      scrollContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white">
       <Hero onBookNow={() => onNavigate('booking')} />
 
-      <section className="py-16 bg-white">
+      <section className="py-12 md:py-16 bg-white">
         <div className="w-full px-4 md:px-8 lg:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-20">
-            <div className="order-2 lg:order-1">
-              <img
-                src="https://images.pexels.com/photos/3065209/pexels-photo-3065209.jpeg?auto=compress&cs=tinysrgb&w=800"
-                alt="Salon ambiance"
-                className="rounded-3xl shadow-2xl w-full h-[400px] object-cover"
-              />
-            </div>
-            <div className="order-1 lg:order-2">
-              <h2 className="text-4xl md:text-5xl font-bold text-[#264025] mb-6">
-                Welcome to Geetandrim
-              </h2>
-              <p className="text-lg text-[#82896E] mb-6 leading-relaxed">
-                Experience the perfect blend of traditional beauty care and modern styling techniques.
-                Our expert team is dedicated to bringing out your natural beauty with premium services
-                tailored just for you.
-              </p>
-              <button
-                onClick={() => onNavigate('booking')}
-                className="bg-[#AD6B4B] text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-[#7B4B36] transition-all duration-300 transform hover:scale-105 shadow-xl"
-              >
-                Book Your Appointment
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20 bg-gradient-to-b from-[#DDCBB7]/10 to-white">
-        <div className="w-full px-4 md:px-8 lg:px-12">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold text-[#264025] mb-4">
-              Our Services
+          <div className="text-center mb-10 md:mb-14">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#264025] mb-2">
+              Explore Our Services
             </h2>
-            <p className="text-xl text-[#82896E] max-w-2xl mx-auto">
-              Comprehensive beauty and grooming solutions for every occasion
+            <p className="text-xs md:text-sm text-[#82896E]">
+              Click on any category to see all available services
             </p>
           </div>
 
-          <div className="space-y-12">
+          <div className="space-y-3 md:space-y-4">
             {categories.map((category) => {
               const categoryServices = getServicesByCategory(category.id);
               if (categoryServices.length === 0) return null;
 
+              const isExpanded = expandedCategory === category.id;
+
               return (
-                <div key={category.id} className="bg-white rounded-3xl shadow-xl overflow-hidden">
-                  <div className="bg-gradient-to-r from-[#264025] to-[#7B4B36] p-6 md:p-8">
-                    <h3 className="text-3xl md:text-4xl font-bold text-white">{category.name}</h3>
-                    {category.description && (
-                      <p className="text-[#DDCBB7] text-lg mt-2">{category.description}</p>
-                    )}
-                  </div>
-                  <div className="p-6 md:p-8">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {categoryServices.map((service) => (
-                        <div
-                          key={service.id}
-                          onClick={() => onNavigate('booking', service)}
-                          className="group p-4 rounded-xl bg-gradient-to-br from-[#DDCBB7]/10 to-white border-2 border-[#DDCBB7] hover:border-[#AD6B4B] hover:shadow-lg transition-all duration-300 cursor-pointer"
-                        >
-                          <h4 className="font-bold text-[#264025] mb-2 group-hover:text-[#AD6B4B] transition-colors line-clamp-2">
-                            {service.name}
-                          </h4>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-[#82896E]">{service.duration_minutes} mins</span>
-                            <span className="font-bold text-[#AD6B4B]">₹{service.price}</span>
-                          </div>
-                        </div>
-                      ))}
+                <div
+                  key={category.id}
+                  className="border border-gray-200 rounded-lg overflow-hidden hover:border-[#AD6B4B] transition-colors duration-300"
+                >
+                  <button
+                    onClick={() =>
+                      setExpandedCategory(isExpanded ? null : category.id)
+                    }
+                    className="w-full px-4 md:px-6 py-4 md:py-5 flex items-center justify-between bg-gradient-to-r from-[#264025] to-[#7B4B36] hover:from-[#7B4B36] hover:to-[#264025] transition-all duration-300 group"
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <span className="text-lg md:text-xl font-bold text-white">
+                        {category.name}
+                      </span>
+                      <span className="text-xs md:text-sm text-[#DDCBB7]">
+                        ({categoryServices.length} services)
+                      </span>
                     </div>
-                  </div>
+                    <ChevronDown
+                      size={20}
+                      className={`text-white transition-transform duration-300 ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {isExpanded && (
+                    <div className="bg-gray-50 p-4 md:p-6 border-t border-gray-200">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                        {categoryServices.map((service) => (
+                          <div
+                            key={service.id}
+                            onClick={() => onNavigate('booking', service)}
+                            className="group bg-white p-3 md:p-4 rounded-lg border border-gray-100 hover:border-[#AD6B4B] hover:shadow-md transition-all duration-300 cursor-pointer"
+                          >
+                            <h4 className="font-semibold text-[#264025] text-xs md:text-sm mb-2 group-hover:text-[#AD6B4B] transition-colors line-clamp-2 min-h-[2.5rem] md:min-h-[3rem]">
+                              {service.name}
+                            </h4>
+                            <div className="flex items-center justify-between text-xs md:text-sm">
+                              <span className="text-[#82896E]">
+                                {service.duration_minutes}m
+                              </span>
+                              <span className="font-bold text-[#AD6B4B]">
+                                ₹{service.price}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
 
-          <div className="text-center mt-12">
+          <div className="text-center mt-8 md:mt-10">
             <button
               onClick={() => onNavigate('booking')}
-              className="bg-[#264025] text-white px-10 py-4 rounded-full text-lg font-semibold hover:bg-[#AD6B4B] transition-all duration-300 transform hover:scale-105 shadow-xl"
+              className="bg-[#264025] hover:bg-[#7B4B36] text-white px-8 md:px-10 py-3 md:py-4 rounded-full text-sm md:text-base font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
-              Book Any Service Now
+              Book Appointment
             </button>
           </div>
         </div>
       </section>
 
-      <section className="py-20 bg-white">
+      <section className="py-12 md:py-16 bg-gray-50">
         <div className="w-full px-4 md:px-8 lg:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className="text-4xl md:text-5xl font-bold text-[#264025] mb-6">
-                Why Geetandrim?
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-10 md:mb-14">
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#264025] mb-2">
+                Why Choose Geetandrim
               </h2>
-              <div className="space-y-6">
-                {[
-                  {
-                    icon: Scissors,
-                    title: 'Expert Stylists',
-                    desc: 'Our certified professionals bring years of experience and creativity',
-                  },
-                  {
-                    icon: Sparkles,
-                    title: 'Premium Products',
-                    desc: 'We use only the finest quality products for exceptional results',
-                  },
-                  {
-                    icon: Heart,
-                    title: 'Personalized Care',
-                    desc: 'Every service is customized to match your unique style and needs',
-                  },
-                  {
-                    icon: Flower2,
-                    title: 'Luxurious Ambiance',
-                    desc: 'Relax in our serene and hygienic environment',
-                  },
-                ].map((item, index) => (
-                  <div key={index} className="flex items-start space-x-4 group">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#AD6B4B] to-[#7B4B36] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
-                      <item.icon className="text-white" size={24} />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-[#264025] mb-1">{item.title}</h3>
-                      <p className="text-[#82896E]">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="text-xs md:text-sm text-[#82896E]">
+                Experience excellence in beauty care
+              </p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <img
-                src="https://images.pexels.com/photos/3992868/pexels-photo-3992868.jpeg?auto=compress&cs=tinysrgb&w=600"
-                alt="Salon service 1"
-                className="rounded-2xl shadow-xl h-64 object-cover w-full"
-              />
-              <img
-                src="https://images.pexels.com/photos/3738379/pexels-photo-3738379.jpeg?auto=compress&cs=tinysrgb&w=600"
-                alt="Salon service 2"
-                className="rounded-2xl shadow-xl h-64 object-cover w-full mt-8"
-              />
-              <img
-                src="https://images.pexels.com/photos/1697214/pexels-photo-1697214.jpeg?auto=compress&cs=tinysrgb&w=600"
-                alt="Salon service 3"
-                className="rounded-2xl shadow-xl h-64 object-cover w-full"
-              />
-              <img
-                src="https://images.pexels.com/photos/3997982/pexels-photo-3997982.jpeg?auto=compress&cs=tinysrgb&w=600"
-                alt="Salon service 4"
-                className="rounded-2xl shadow-xl h-64 object-cover w-full mt-8"
-              />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              {[
+                { title: 'Expert Stylists', desc: 'Certified professionals', icon: '👩‍💼' },
+                { title: 'Premium Products', desc: 'Finest quality brands', icon: '✨' },
+                { title: 'Personalized Care', desc: 'Customized treatments', icon: '💝' },
+                { title: 'Luxury Ambiance', desc: 'Serene environment', icon: '🏛️' },
+              ].map((item, index) => (
+                <div
+                  key={index}
+                  className="bg-white p-5 md:p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 text-center"
+                >
+                  <div className="text-3xl md:text-4xl mb-3">{item.icon}</div>
+                  <h3 className="font-bold text-[#264025] text-sm md:text-base mb-1">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs md:text-sm text-[#82896E]">{item.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-20 bg-gradient-to-br from-[#264025] to-[#7B4B36] text-white">
+      <section className="py-12 md:py-16 bg-white">
         <div className="w-full px-4 md:px-8 lg:px-12">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Ready for Your Transformation?
+          <div className="max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
+              <div>
+                <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#264025] mb-4 md:mb-6">
+                  Experience True Beauty Care
+                </h2>
+                <p className="text-xs md:text-sm text-[#82896E] mb-4 md:mb-6 leading-relaxed">
+                  At Geetandrim, we believe true beauty comes from feeling confident and cared for. Our expert team combines traditional beauty practices with modern techniques to deliver exceptional results.
+                </p>
+                <ul className="space-y-2 md:space-y-3 mb-6 md:mb-8">
+                  {[
+                    'Highly trained and certified stylists',
+                    'Premium international and local brands',
+                    'Hygienic and peaceful salon environment',
+                    'Personalized beauty consultation',
+                    'Competitive and transparent pricing',
+                  ].map((item, index) => (
+                    <li key={index} className="flex items-center gap-3 text-xs md:text-sm">
+                      <span className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#AD6B4B] flex-shrink-0" />
+                      <span className="text-[#264025]">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  onClick={() => onNavigate('booking')}
+                  className="bg-[#AD6B4B] hover:bg-[#7B4B36] text-white px-6 md:px-8 py-2.5 md:py-3 rounded-full text-xs md:text-sm font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                >
+                  Explore Our Services
+                </button>
+              </div>
+              <div className="order-first lg:order-last">
+                <img
+                  src="https://images.pexels.com/photos/3992868/pexels-photo-3992868.jpeg?auto=compress&cs=tinysrgb&w=800"
+                  alt="Professional salon styling"
+                  className="rounded-2xl shadow-lg w-full h-auto object-cover"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-12 md:py-16 bg-gray-50">
+        <div className="w-full px-4 md:px-8 lg:px-12">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-8 md:mb-10">
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#264025] mb-2">
+                Our Gallery
+              </h2>
+              <p className="text-xs md:text-sm text-[#82896E]">
+                Beautiful transformations by our team
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+              {[
+                'https://images.pexels.com/photos/3992868/pexels-photo-3992868.jpeg?auto=compress&cs=tinysrgb&w=600',
+                'https://images.pexels.com/photos/3738379/pexels-photo-3738379.jpeg?auto=compress&cs=tinysrgb&w=600',
+                'https://images.pexels.com/photos/1697214/pexels-photo-1697214.jpeg?auto=compress&cs=tinysrgb&w=600',
+                'https://images.pexels.com/photos/3997982/pexels-photo-3997982.jpeg?auto=compress&cs=tinysrgb&w=600',
+              ].map((img, index) => (
+                <div
+                  key={index}
+                  className="relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 aspect-square group"
+                >
+                  <img
+                    src={img}
+                    alt={`Gallery ${index + 1}`}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-12 md:py-16 bg-gradient-to-br from-[#264025] to-[#7B4B36] text-white">
+        <div className="w-full px-4 md:px-8 lg:px-12">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 md:mb-4">
+              Ready to Transform?
             </h2>
-            <p className="text-xl text-[#DDCBB7] mb-8">
-              Book your appointment today and experience the Geetandrim difference
+            <p className="text-xs md:text-sm text-[#DDCBB7] mb-6 md:mb-8">
+              Book your appointment and experience the Geetandrim difference
             </p>
-            <div className="flex flex-wrap gap-4 justify-center">
+            <div className="flex flex-wrap gap-2 md:gap-4 justify-center">
               <button
                 onClick={() => onNavigate('booking')}
-                className="bg-[#AD6B4B] text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-[#DDCBB7] hover:text-[#264025] transition-all duration-300 transform hover:scale-105 shadow-xl"
+                className="bg-[#AD6B4B] hover:bg-[#DDCBB7] hover:text-[#264025] text-white px-6 md:px-8 py-2.5 md:py-3 rounded-full text-xs md:text-sm font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
               >
-                Book Appointment
+                Book Now
               </button>
               <button
                 onClick={() => onNavigate('contact')}
-                className="bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-white/20 transition-all duration-300 border-2 border-white/30"
+                className="border border-white/50 hover:border-white text-white px-6 md:px-8 py-2.5 md:py-3 rounded-full text-xs md:text-sm font-semibold transition-all duration-300"
               >
                 Contact Us
               </button>
