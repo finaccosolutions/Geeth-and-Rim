@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
+import { WhatsAppButton } from './components/WhatsAppButton';
 import { Home } from './pages/Home';
 import { Services } from './pages/Services';
 import { WeddingPackages } from './pages/WeddingPackages';
@@ -68,6 +69,7 @@ function AppContent() {
         )}
       </main>
       <Footer />
+      <WhatsAppButton />
     </div>
   );
 }

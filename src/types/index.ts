@@ -86,3 +86,19 @@ export interface BlockedTimeSlot {
   created_at: string;
   updated_at: string;
 }
+
+export interface ContactSettings {
+  id: string;
+  whatsapp_number: string;
+  phone_number: string;
+  email: string;
+  address: string;
+  opening_hours: {
+    [key: string]: {
+      open: string;
+      close: string;
+      closed: boolean;
+    };
+  };
+  updated_at: string;
+}

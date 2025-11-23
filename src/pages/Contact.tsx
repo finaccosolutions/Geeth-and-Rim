@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { ContactSettings } from '../types';
 
 export const Contact = () => {
+  const [contactSettings, setContactSettings] = useState<ContactSettings | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -10,6 +13,17 @@ export const Contact = () => {
   });
   const [submitted, setSubmitted] = useState(false);
 
+  useEffect(() => {
+    loadContactSettings();
+  }, []);
+
+  const loadContactSettings = async () => {
+    const { data } = await supabase.from('contact_settings').select('*').maybeSingle();
+    if (data) {
+      setContactSettings(data);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
@@ -17,6 +31,33 @@ export const Contact = () => {
       setSubmitted(false);
       setFormData({ name: '', email: '', phone: '', message: '' });
     }, 3000);
+  };
+
+  const getOpeningHoursText = () => {
+    if (!contactSettings) return null;
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const workingDays = days.filter(day => !contactSettings.opening_hours[day].closed);
+
+    if (workingDays.length === 0) return 'Closed';
+
+    const weekdayPattern = workingDays.slice(0, 5).every((day, i) => {
+      const hours = contactSettings.opening_hours[day];
+      const firstHours = contactSettings.opening_hours[workingDays[0]];
+      return hours.open === firstHours.open && hours.close === firstHours.close;
+    });
+
+    if (weekdayPattern && workingDays.length >= 5) {
+      return [
+        `Monday - Friday: ${contactSettings.opening_hours.monday.open} - ${contactSettings.opening_hours.monday.close}`,
+        contactSettings.opening_hours.saturday.closed ? null : `Saturday: ${contactSettings.opening_hours.saturday.open} - ${contactSettings.opening_hours.saturday.close}`,
+        contactSettings.opening_hours.sunday.closed ? null : `Sunday: ${contactSettings.opening_hours.sunday.open} - ${contactSettings.opening_hours.sunday.close}`,
+      ].filter(Boolean);
+    }
+
+    return workingDays.map(day => {
+      const hours = contactSettings.opening_hours[day];
+      return `${day.charAt(0).toUpperCase() + day.slice(1)}: ${hours.open} - ${hours.close}`;
+    });
   };
 
   return (
@@ -99,9 +140,7 @@ export const Contact = () => {
                   <div>
                     <h3 className="text-lg font-bold text-[#264025] mb-2">Visit Us</h3>
                     <p className="text-[#82896E]">
-                      123 Beauty Street, Salon District
-                      <br />
-                      City - 123456, State
+                      {contactSettings?.address || 'Loading...'}
                     </p>
                   </div>
                 </div>
@@ -115,10 +154,10 @@ export const Contact = () => {
                   <div>
                     <h3 className="text-lg font-bold text-[#264025] mb-2">Call Us</h3>
                     <a
-                      href="tel:+919876543210"
+                      href={`tel:${contactSettings?.phone_number || ''}`}
                       className="text-[#82896E] hover:text-[#AD6B4B] transition-colors duration-300"
                     >
-                      +91 98765 43210
+                      {contactSettings?.phone_number || 'Loading...'}
                     </a>
                   </div>
                 </div>
@@ -132,10 +171,10 @@ export const Contact = () => {
                   <div>
                     <h3 className="text-lg font-bold text-[#264025] mb-2">Email Us</h3>
                     <a
-                      href="mailto:booking@geetandrim.com"
+                      href={`mailto:${contactSettings?.email || ''}`}
                       className="text-[#82896E] hover:text-[#AD6B4B] transition-colors duration-300"
                     >
-                      booking@geetandrim.com
+                      {contactSettings?.email || 'Loading...'}
                     </a>
                   </div>
                 </div>
@@ -149,8 +188,17 @@ export const Contact = () => {
                   <div>
                     <h3 className="text-lg font-bold text-[#264025] mb-2">Working Hours</h3>
                     <div className="text-[#82896E] space-y-1">
-                      <p>Monday - Saturday: 9:00 AM - 8:00 PM</p>
-                      <p>Sunday: 10:00 AM - 6:00 PM</p>
+                      {contactSettings ? (
+                        Array.isArray(getOpeningHoursText()) ? (
+                          (getOpeningHoursText() as string[]).map((line, i) => (
+                            <p key={i}>{line}</p>
+                          ))
+                        ) : (
+                          <p>{getOpeningHoursText()}</p>
+                        )
+                      ) : (
+                        <p>Loading...</p>
+                      )}
                     </div>
                   </div>
                 </div>

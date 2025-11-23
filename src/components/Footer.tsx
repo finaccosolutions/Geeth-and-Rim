@@ -1,6 +1,22 @@
+import { useState, useEffect } from 'react';
 import { Phone, Mail, MapPin, Clock, Facebook, Instagram } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { ContactSettings } from '../types';
 
 export const Footer = () => {
+  const [contactSettings, setContactSettings] = useState<ContactSettings | null>(null);
+
+  useEffect(() => {
+    loadContactSettings();
+  }, []);
+
+  const loadContactSettings = async () => {
+    const { data } = await supabase.from('contact_settings').select('*').maybeSingle();
+    if (data) {
+      setContactSettings(data);
+    }
+  };
+
   return (
     <footer className="bg-[#264025] text-[#DDCBB7]">
       <div className="container mx-auto px-4 py-12">
@@ -62,18 +78,18 @@ export const Footer = () => {
             <ul className="space-y-3 text-sm">
               <li className="flex items-start space-x-3">
                 <MapPin size={18} className="text-[#AD6B4B] flex-shrink-0 mt-1" />
-                <span>123 Beauty Street, Salon District, City - 123456</span>
+                <span>{contactSettings?.address || 'Loading...'}</span>
               </li>
               <li className="flex items-center space-x-3">
                 <Phone size={18} className="text-[#AD6B4B] flex-shrink-0" />
-                <a href="tel:+919876543210" className="hover:text-[#AD6B4B] transition-colors duration-300">
-                  +91 98765 43210
+                <a href={`tel:${contactSettings?.phone_number || ''}`} className="hover:text-[#AD6B4B] transition-colors duration-300">
+                  {contactSettings?.phone_number || 'Loading...'}
                 </a>
               </li>
               <li className="flex items-center space-x-3">
                 <Mail size={18} className="text-[#AD6B4B] flex-shrink-0" />
-                <a href="mailto:booking@geetandrim.com" className="hover:text-[#AD6B4B] transition-colors duration-300">
-                  booking@geetandrim.com
+                <a href={`mailto:${contactSettings?.email || ''}`} className="hover:text-[#AD6B4B] transition-colors duration-300">
+                  {contactSettings?.email || 'Loading...'}
                 </a>
               </li>
             </ul>
@@ -82,20 +98,32 @@ export const Footer = () => {
           <div>
             <h4 className="text-lg font-semibold mb-4 text-[#AD6B4B]">Opening Hours</h4>
             <ul className="space-y-2 text-sm">
-              <li className="flex items-center space-x-3">
-                <Clock size={18} className="text-[#AD6B4B] flex-shrink-0" />
-                <div>
-                  <div className="font-medium">Monday - Saturday</div>
-                  <div className="text-[#82896E]">9:00 AM - 8:00 PM</div>
-                </div>
-              </li>
-              <li className="flex items-center space-x-3">
-                <Clock size={18} className="text-[#AD6B4B] flex-shrink-0" />
-                <div>
-                  <div className="font-medium">Sunday</div>
-                  <div className="text-[#82896E]">10:00 AM - 6:00 PM</div>
-                </div>
-              </li>
+              {contactSettings && (
+                <>
+                  {!contactSettings.opening_hours.monday?.closed && (
+                    <li className="flex items-center space-x-3">
+                      <Clock size={18} className="text-[#AD6B4B] flex-shrink-0" />
+                      <div>
+                        <div className="font-medium">Monday - Saturday</div>
+                        <div className="text-[#82896E]">
+                          {contactSettings.opening_hours.monday?.open || '09:00'} - {contactSettings.opening_hours.monday?.close || '20:00'}
+                        </div>
+                      </div>
+                    </li>
+                  )}
+                  {!contactSettings.opening_hours.sunday?.closed && (
+                    <li className="flex items-center space-x-3">
+                      <Clock size={18} className="text-[#AD6B4B] flex-shrink-0" />
+                      <div>
+                        <div className="font-medium">Sunday</div>
+                        <div className="text-[#82896E]">
+                          {contactSettings.opening_hours.sunday?.open || '10:00'} - {contactSettings.opening_hours.sunday?.close || '18:00'}
+                        </div>
+                      </div>
+                    </li>
+                  )}
+                </>
+              )}
             </ul>
           </div>
         </div>
