@@ -120,21 +120,54 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
 
     setIsSubmitting(true);
 
-    const endTime = calculateEndTime(selectedTime, selectedService.duration_minutes);
+    try {
+      const endTime = calculateEndTime(selectedTime, selectedService.duration_minutes);
 
-    const { error } = await supabase.from('bookings').insert({
-      service_id: selectedService.id,
-      customer_name: formData.name,
-      customer_email: formData.email,
-      customer_phone: formData.phone,
-      booking_date: selectedDate,
-      start_time: selectedTime,
-      end_time: endTime,
-      status: 'pending',
-      notes: formData.notes,
-    });
+      const { data: existingBookings } = await supabase
+        .from('bookings')
+        .select('start_time, end_time')
+        .eq('booking_date', selectedDate)
+        .neq('status', 'cancelled');
 
-    if (!error) {
+      const isSlotAvailable = !existingBookings?.some((booking) => {
+        const startMinutes = timeToMinutes(booking.start_time);
+        const endMinutes = timeToMinutes(booking.end_time);
+        const selectedStartMinutes = timeToMinutes(selectedTime);
+        const selectedEndMinutes = selectedStartMinutes + selectedService.duration_minutes;
+
+        return (
+          (selectedStartMinutes >= startMinutes && selectedStartMinutes < endMinutes) ||
+          (selectedEndMinutes > startMinutes && selectedEndMinutes <= endMinutes) ||
+          (selectedStartMinutes <= startMinutes && selectedEndMinutes >= endMinutes)
+        );
+      });
+
+      if (!isSlotAvailable) {
+        alert('Sorry, this time slot was just booked. Please select another time.');
+        await loadAvailableSlots();
+        setSelectedTime('');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { error } = await supabase.from('bookings').insert({
+        service_id: selectedService.id,
+        customer_name: formData.name,
+        customer_email: formData.email,
+        customer_phone: formData.phone,
+        booking_date: selectedDate,
+        start_time: selectedTime,
+        end_time: endTime,
+        status: 'confirmed',
+        notes: formData.notes,
+      });
+
+      if (error) {
+        alert('Booking failed. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
+
       await sendBookingEmail({
         customerName: formData.name,
         customerEmail: formData.email,
@@ -145,13 +178,16 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         duration: selectedService.duration_minutes,
         price: selectedService.price,
         notes: formData.notes,
-        status: 'pending',
+        status: 'confirmed',
       });
 
       setBookingComplete(true);
+    } catch (error) {
+      console.error('Booking error:', error);
+      alert('An error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
   const getServicesByCategory = (categoryId: string) => {
@@ -174,7 +210,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
             </div>
             <h2 className="text-3xl font-bold text-[#264025] mb-4">Booking Confirmed!</h2>
             <p className="text-[#82896E] mb-6">
-              Your appointment request has been submitted. We'll send you a confirmation email shortly.
+              Your appointment has been confirmed. A confirmation email has been sent to your email address.
             </p>
             <div className="bg-[#DDCBB7] rounded-2xl p-6 mb-6 text-left">
               <h3 className="font-bold text-[#264025] mb-3">Booking Details</h3>

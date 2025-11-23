@@ -57,8 +57,8 @@ export const sendBookingEmail = async (bookingData: BookingEmailData): Promise<b
             </div>
             <div class="content">
               <h2 style="color: #264025; margin-top: 0;">Thank you for your booking, ${bookingData.customerName}!</h2>
-              <p>Your appointment request has been received and is <span class="status">${bookingData.status.toUpperCase()}</span></p>
-              <p>We will review your booking and send you a confirmation shortly.</p>
+              <p>Your appointment has been <span class="status" style="background: #4CAF50;">${bookingData.status.toUpperCase()}</span></p>
+              <p>We look forward to seeing you at your scheduled appointment!</p>
 
               <div class="details">
                 <h3 style="margin-top: 0; color: #AD6B4B;">Booking Details</h3>
@@ -92,9 +92,9 @@ export const sendBookingEmail = async (bookingData: BookingEmailData): Promise<b
 
               <p style="margin-top: 20px;"><strong>What's Next?</strong></p>
               <ul style="color: #82896E;">
-                <li>Our team will review your booking request</li>
-                <li>You will receive a confirmation email once approved</li>
+                <li>Your appointment is confirmed and reserved</li>
                 <li>Please arrive 10 minutes before your appointment time</li>
+                <li>Bring this confirmation email with you</li>
               </ul>
 
               <div style="background: #DDCBB7; padding: 15px; border-radius: 8px; margin-top: 20px;">
@@ -134,8 +134,8 @@ export const sendBookingEmail = async (bookingData: BookingEmailData): Promise<b
               <p style="margin: 10px 0 0 0; opacity: 0.9;">Geetandrim Salon Admin</p>
             </div>
             <div class="content">
-              <div class="alert">
-                <strong>⚠️ Action Required:</strong> A new booking request has been received and requires your approval.
+              <div class="alert" style="background: #4CAF50; color: white;">
+                <strong>New Confirmed Booking:</strong> A new booking has been automatically confirmed and added to your schedule.
               </div>
 
               <div class="details">
@@ -186,10 +186,10 @@ export const sendBookingEmail = async (bookingData: BookingEmailData): Promise<b
 
               <p style="margin-top: 20px;"><strong>Next Steps:</strong></p>
               <ol style="color: #82896E;">
-                <li>Log in to the admin panel</li>
-                <li>Review the booking details</li>
-                <li>Confirm or reject the booking</li>
-                <li>Customer will be notified automatically</li>
+                <li>The booking has been automatically confirmed</li>
+                <li>Log in to the admin panel to view details</li>
+                <li>Prepare for the appointment</li>
+                <li>Customer has been notified via email</li>
               </ol>
 
               <div style="text-align: center; margin-top: 30px;">
