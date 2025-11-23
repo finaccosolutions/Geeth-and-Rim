@@ -72,9 +72,9 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     const [bookingsResult, blockedResult] = await Promise.all([
       supabase
         .from('bookings')
-        .select('start_time, end_time, service_id')
+        .select('start_time, end_time, service_id, status')
         .eq('booking_date', selectedDate)
-        .neq('status', 'cancelled')
+        .in('status', ['confirmed', 'pending'])
         .order('start_time', { ascending: true }),
       supabase
         .from('blocked_time_slots')
@@ -88,7 +88,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     const allBookings: BookingTimeRange[] = [];
 
     if (bookingsResult.data && bookingsResult.data.length > 0) {
-      console.log(`Found ${bookingsResult.data.length} bookings for ${selectedDate}`);
+      console.log(`Found ${bookingsResult.data.length} active bookings for ${selectedDate}`);
       bookingsResult.data.forEach(booking => {
         allBookings.push({
           start_time: booking.start_time,
@@ -196,7 +196,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
         .from('bookings')
         .select('start_time, end_time')
         .eq('booking_date', selectedDate)
-        .neq('status', 'cancelled');
+        .in('status', ['confirmed', 'pending']);
 
       const { data: latestBlocked } = await supabase
         .from('blocked_time_slots')

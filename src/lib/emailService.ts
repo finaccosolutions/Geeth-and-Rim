@@ -200,7 +200,7 @@ export const sendBookingEmail = async (bookingData: BookingEmailData): Promise<b
               </ol>
 
               <div style="text-align: center; margin-top: 30px;">
-                <a href="${window.location.origin}/admin" style="display: inline-block; background: #264025; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; font-weight: bold;">Go to Admin Panel</a>
+                <p style="color: #82896E; font-size: 14px;">Please log in to the admin panel to manage this booking.</p>
               </div>
             </div>
           </div>

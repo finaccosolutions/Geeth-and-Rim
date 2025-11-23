@@ -158,24 +158,16 @@ export const BookingsManager = () => {
                       >
                         <Eye size={18} />
                       </button>
-                      {booking.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                            className="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors"
-                            title="Confirm"
-                          >
-                            <Check size={18} />
-                          </button>
-                          <button
-                            onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                            title="Cancel"
-                          >
-                            <X size={18} />
-                          </button>
-                        </>
-                      )}
+                      <select
+                        value={booking.status}
+                        onChange={(e) => updateBookingStatus(booking.id, e.target.value)}
+                        className="px-3 py-1 rounded-lg border-2 border-gray-300 focus:border-[#AD6B4B] outline-none text-sm font-medium"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
                     </div>
                   </td>
                 </tr>
