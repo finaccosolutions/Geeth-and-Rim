@@ -21,7 +21,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedService, setSelectedService] = useState<Service | null>(preSelectedService || null);
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedTime, setSelectedTime] = useState('');
   const [manualTimeInput, setManualTimeInput] = useState('');
   const [existingBookings, setExistingBookings] = useState<BookingTimeRange[]>([]);
@@ -46,13 +46,13 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   }, []);
 
   useEffect(() => {
-    if (selectedDate && selectedService) {
-      console.log('Date or service changed, loading bookings...');
+    if (selectedDate) {
+      console.log('Date changed, loading bookings...');
       loadExistingBookings();
     } else {
       setExistingBookings([]);
     }
-  }, [selectedDate, selectedService]);
+  }, [selectedDate]);
 
   const loadData = async () => {
     const [servicesResult, categoriesResult] = await Promise.all([
@@ -65,7 +65,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
   };
 
   const loadExistingBookings = async () => {
-    if (!selectedDate || !selectedService) return;
+    if (!selectedDate) return;
 
     console.log('Loading bookings for date:', selectedDate);
 
@@ -124,6 +124,13 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  };
+
+  const formatTime12Hour = (time24: string) => {
+    const [hours, minutes] = time24.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const hours12 = hours % 12 || 12;
+    return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
   };
 
   const calculateEndTime = (startTime: string, durationMinutes: number) => {
@@ -364,9 +371,9 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
               );
             })}
 
-            {manualTimeInput && isTimeAvailable(manualTimeInput) && selectedService && (
+            {manualTimeInput && selectedService && (
               <div
-                className="absolute top-2 bottom-2 bg-blue-500 bg-opacity-70 border-2 border-blue-700 rounded shadow-lg animate-pulse z-20"
+                className={`absolute top-2 bottom-2 ${isTimeAvailable(manualTimeInput) ? 'bg-blue-500 bg-opacity-70 border-2 border-blue-700' : 'bg-orange-500 bg-opacity-70 border-2 border-orange-700'} rounded shadow-lg animate-pulse z-20`}
                 style={{
                   left: `${((timeToMinutes(manualTimeInput) - openMinutes) / totalMinutes) * 100}%`,
                   width: `${(selectedService.duration_minutes / totalMinutes) * 100}%`,
@@ -374,7 +381,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                 }}
               >
                 <div className="flex items-center justify-center h-full text-white text-xs font-bold">
-                  Your Slot
+                  {isTimeAvailable(manualTimeInput) ? 'Your Slot' : 'Unavailable'}
                 </div>
               </div>
             )}
@@ -466,7 +473,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#82896E]">Time</span>
-                  <span className="font-semibold text-[#264025]">{selectedTime}</span>
+                  <span className="font-semibold text-[#264025]">{formatTime12Hour(selectedTime)}</span>
                 </div>
               </div>
             </div>
@@ -645,13 +652,10 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                   {renderTimeline()}
 
                   <div className="bg-gradient-to-br from-[#264025]/5 to-[#AD6B4B]/5 rounded-2xl p-8 border-2 border-[#AD6B4B]">
-                    <h3 className="text-xl font-bold text-[#264025] mb-4 flex items-center">
+                    <h3 className="text-xl font-bold text-[#264025] mb-6 flex items-center">
                       <Clock className="mr-2 text-[#AD6B4B]" size={24} />
                       Enter Your Preferred Time
                     </h3>
-                    <p className="text-sm text-[#82896E] mb-6">
-                      Our shop is open from {shopOpenTime} to {shopCloseTime}
-                    </p>
                     <div className="flex flex-col sm:flex-row gap-4">
                       <div className="flex-1">
                         <input
@@ -664,17 +668,28 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                         />
                         {manualTimeInput && (
                           <p className="text-sm text-[#82896E] mt-2">
-                            Session ends at: {calculateEndTime(manualTimeInput, selectedService.duration_minutes)}
+                            Session ends at: {formatTime12Hour(calculateEndTime(manualTimeInput, selectedService.duration_minutes))}
                           </p>
                         )}
                       </div>
                       <button
                         onClick={handleSetTime}
                         disabled={!manualTimeInput || !isTimeAvailable(manualTimeInput)}
-                        className="sm:w-auto bg-gradient-to-r from-[#AD6B4B] to-[#C17B5C] text-white px-10 py-4 rounded-xl font-bold hover:from-[#7B4B36] hover:to-[#AD6B4B] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 shadow-lg disabled:hover:scale-100"
+                        className="
+                          sm:w-auto 
+                          bg-gradient-to-r from-[#AD6B4B] to-[#C17B5C]
+                          text-white px-6
+                          h-14
+                          rounded-lg font-semibold
+                          hover:from-[#7B4B36] hover:to-[#AD6B4B]
+                          transition-all duration-300
+                          disabled:opacity-50 disabled:cursor-not-allowed
+                          shadow-lg
+                        "
                       >
                         Continue
                       </button>
+
                     </div>
                     {timeError && (
                       <div className="mt-4 p-4 bg-red-50 border-2 border-red-300 rounded-xl text-red-700 font-medium">
@@ -713,7 +728,7 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
                   </div>
                   <div>
                     <div className="text-sm text-[#82896E] mb-1">Time</div>
-                    <div className="font-bold">{selectedTime} - {calculateEndTime(selectedTime, selectedService.duration_minutes)}</div>
+                    <div className="font-bold">{formatTime12Hour(selectedTime)} - {formatTime12Hour(calculateEndTime(selectedTime, selectedService.duration_minutes))}</div>
                   </div>
                 </div>
               </div>
