@@ -9,7 +9,7 @@ interface SettingsProps {
 }
 
 export const Settings = ({ onNavigate }: SettingsProps) => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [changePasswordMode, setChangePasswordMode] = useState(false);
@@ -23,30 +23,40 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
   const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      loadProfile();
+    if (!authLoading) {
+      if (!user) {
+        onNavigate('auth');
+      } else {
+        loadProfile();
+      }
     }
-  }, [user]);
-
-  useEffect(() => {
-    if (!loading && !user) {
-      onNavigate('auth');
-    }
-  }, [loading, user, onNavigate]);
+  }, [user, authLoading, onNavigate]);
 
   const loadProfile = async () => {
-    if (!user) return;
-
-    const { data } = await supabase
-      .from('customer_profiles')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (data) {
-      setProfile(data);
+    if (!user) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    try {
+      const { data, error } = await supabase
+        .from('customer_profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error loading profile:', error);
+      }
+
+      if (data) {
+        setProfile(data);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -121,16 +131,31 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
-      <div className="min-h-screen pt-32 pb-20 flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-[#AD6B4B] border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen pt-32 pb-20 flex items-center justify-center bg-gradient-to-br from-[#FAF6F1] to-[#E8D5C4]/30">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#AD6B4B] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[#264025] font-semibold">Loading your settings...</p>
+        </div>
       </div>
     );
   }
 
   if (!user || !profile) {
-    return null;
+    return (
+      <div className="min-h-screen pt-32 pb-20 flex items-center justify-center bg-gradient-to-br from-[#FAF6F1] to-[#E8D5C4]/30">
+        <div className="text-center">
+          <p className="text-[#264025] font-semibold mb-4">Please login to view your settings</p>
+          <button
+            onClick={() => onNavigate('auth')}
+            className="bg-[#AD6B4B] text-white px-6 py-3 rounded-lg hover:bg-[#7B4B36] transition-colors font-semibold"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
