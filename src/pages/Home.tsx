@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Hero } from '../components/Hero';
 import { supabase } from '../lib/supabase';
 import { Service, ServiceCategory } from '../types';
-import { ChevronLeft, ChevronRight, Sparkles, Clock, DollarSign } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 
 interface HomeProps {
   onNavigate: (page: string, data?: unknown) => void;
@@ -87,7 +87,6 @@ export const Home = ({ onNavigate }: HomeProps) => {
     }
   };
 
-
   const selectedServices = selectedCategory ? getServicesByCategory(selectedCategory) : [];
 
   return (
@@ -110,7 +109,7 @@ export const Home = ({ onNavigate }: HomeProps) => {
               </p>
             </div>
 
-            <div className="relative mb-12">
+            <div className="relative mb-8">
               <button
                 onClick={() => scrollCategories('left')}
                 className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-[#C17B5C] text-white rounded-full shadow-xl hover:bg-[#A6684C] transition-all duration-300 flex items-center justify-center"
@@ -120,7 +119,7 @@ export const Home = ({ onNavigate }: HomeProps) => {
  
               <div
                 ref={categoriesScrollRef}
-                className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth px-12"
+                className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth px-12"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 {categories.map((category) => {
@@ -132,51 +131,37 @@ export const Home = ({ onNavigate }: HomeProps) => {
                     <div
                       key={category.id}
                       onClick={() => setSelectedCategory(category.id)}
-                      className={`flex-shrink-0 w-72 cursor-pointer group ${
-                        isSelected ? '' : ''
-                      }`}
+                      className="flex-shrink-0 w-60 cursor-pointer group"
                     >
-                      <div className={`relative rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 ${
+                      <div className={`relative rounded-2xl overflow-hidden transition-all duration-500 ${
                         isSelected
-                          ? 'ring-4 ring-[#C17B5C] shadow-[#C17B5C]/50 transform scale-105'
-                          : 'hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)] hover:-translate-y-2'
+                          ? 'shadow-2xl shadow-[#C17B5C]/40 ring-4 ring-[#C17B5C] ring-offset-2'
+                          : 'shadow-lg hover:shadow-2xl hover:-translate-y-1'
                       }`}>
-                        <div className="relative h-30 overflow-hidden">
+                        <div className="relative h-40 overflow-hidden">
                           <img
                             src={categoryImages[category.name] || 'https://images.pexels.com/photos/3065209/pexels-photo-3065209.jpeg?auto=compress&cs=tinysrgb&w=400'}
                             alt={category.name}
-                            className={`w-full h-full object-cover transition-all duration-700 ${
-                              isSelected ? 'scale-110 brightness-110' : 'group-hover:scale-110'
-                            }`}
+                            className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
                           />
                           <div className={`absolute inset-0 transition-all duration-500 ${
                             isSelected
-                              ? 'bg-gradient-to-t from-[#C17B5C]/80 via-[#C17B5C]/30 to-transparent'
-                              : 'bg-gradient-to-t from-black/60 via-black/20 to-transparent group-hover:from-[#C17B5C]/70 group-hover:via-[#C17B5C]/20'
+                              ? 'bg-gradient-to-t from-[#C17B5C]/90 via-[#C17B5C]/40 to-transparent'
+                              : 'bg-gradient-to-t from-black/70 via-black/30 to-transparent group-hover:from-[#C17B5C]/80 group-hover:via-[#C17B5C]/30'
                           }`} />
-
-                          {isSelected && (
-                            <>
-                              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white to-transparent animate-pulse" />
-                              <div className="absolute top-4 right-4 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-2xl animate-bounce">
-                                <div className="w-6 h-6 bg-gradient-to-br from-[#C17B5C] to-[#A6684C] rounded-full" />
-                              </div>
-                              <div className="absolute inset-0 border-4 border-white/20 rounded-3xl" />
-                            </>
-                          )}
                         </div>
-                        <div className={`p-5 transition-all duration-500 ${
+                        <div className={`p-4 transition-all duration-500 ${
                           isSelected
                             ? 'bg-gradient-to-br from-[#C17B5C] to-[#A6684C] text-white'
-                            : 'bg-gradient-to-br from-white to-[#F5E6D3] text-[#3D2E1F] group-hover:from-[#F5E6D3] group-hover:to-[#E8D5C4]'
+                            : 'bg-white text-[#3D2E1F] group-hover:bg-gradient-to-br group-hover:from-[#F5E6D3] group-hover:to-white'
                         }`}>
-                          <div className="flex items-center justify-between mb-2">
-                            <h3 className={`text-xl font-bold transition-all duration-300 ${
+                          <div className="flex items-center justify-between mb-1">
+                            <h3 className={`text-lg font-bold transition-all duration-300 ${
                               isSelected ? 'text-white' : 'text-[#3D2E1F] group-hover:text-[#C17B5C]'
                             }`}>
                               {category.name}
                             </h3>
-                            <div className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 ${
+                            <div className={`px-2.5 py-0.5 rounded-full text-xs font-bold transition-all duration-300 ${
                               isSelected
                                 ? 'bg-white/30 text-white'
                                 : 'bg-[#C17B5C]/10 text-[#C17B5C] group-hover:bg-[#C17B5C] group-hover:text-white'
@@ -184,19 +169,11 @@ export const Home = ({ onNavigate }: HomeProps) => {
                               {categoryServices.length}
                             </div>
                           </div>
-                          <p className={`text-sm transition-all duration-300 ${
+                          <p className={`text-xs transition-all duration-300 ${
                             isSelected ? 'text-white/90' : 'text-[#6B5A4A] group-hover:text-[#5A4A3A]'
                           }`}>
                             {categoryServices.length === 1 ? 'Service' : 'Services'} Available
                           </p>
-                          {isSelected && (
-                            <div className="mt-3 pt-3 border-t border-white/30">
-                              <div className="flex items-center text-sm font-semibold">
-                                <Sparkles size={16} className="mr-2" />
-                                <span>Selected Category</span>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -213,9 +190,9 @@ export const Home = ({ onNavigate }: HomeProps) => {
             </div>
 
             {selectedCategory && selectedServices.length > 0 && (
-              <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-10">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-2xl md:text-3xl font-bold text-[#3D2E1F]">
+              <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl md:text-2xl font-bold text-[#3D2E1F]">
                     {categories.find(c => c.id === selectedCategory)?.name} Services
                   </h3>
                 </div>
@@ -240,32 +217,32 @@ export const Home = ({ onNavigate }: HomeProps) => {
 
                   <div
                     ref={servicesScrollRef}
-                    className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth pb-4"
+                    className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth pb-4"
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   >
                     {selectedServices.map((service) => (
                       <div
                         key={service.id}
                         onClick={() => onNavigate('booking', service)}
-                        className="flex-shrink-0 w-64 bg-white rounded-2xl overflow-hidden border-2 border-[#E8D5C4] hover:border-[#C17B5C] hover:shadow-2xl transition-all duration-500 cursor-pointer group hover:-translate-y-1"
+                        className="flex-shrink-0 w-52 bg-white rounded-xl overflow-hidden border-2 border-[#E8D5C4] hover:border-[#C17B5C] hover:shadow-xl transition-all duration-500 cursor-pointer group hover:-translate-y-1"
                       >
-                        <div className="relative h-48 overflow-hidden">
+                        <div className="relative h-32 overflow-hidden">
                           <img
                             src={categoryImages[categories.find(c => c.id === selectedCategory)?.name || ''] || 'https://images.pexels.com/photos/3065209/pexels-photo-3065209.jpeg?auto=compress&cs=tinysrgb&w=400'}
                             alt={service.name}
                             className="w-full h-full object-cover group-hover:scale-110 group-hover:brightness-110 transition-all duration-700"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent group-hover:from-[#C17B5C]/60 transition-all duration-500" />
-                          <div className="absolute bottom-3 right-3 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:rotate-12">
-                            <ChevronRight className="text-[#C17B5C]" size={20} />
+                          <div className="absolute bottom-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:rotate-12">
+                            <ChevronRight className="text-[#C17B5C]" size={16} />
                           </div>
                         </div>
-                        <div className="p-4 group-hover:bg-gradient-to-br group-hover:from-[#F5E6D3] group-hover:to-white transition-all duration-500">
-                          <h4 className="font-bold text-[#3D2E1F] text-base mb-2 group-hover:text-[#C17B5C] transition-colors min-h-[3rem] line-clamp-2">
+                        <div className="p-3 group-hover:bg-gradient-to-br group-hover:from-[#F5E6D3] group-hover:to-white transition-all duration-500">
+                          <h4 className="font-bold text-[#3D2E1F] text-sm mb-1 group-hover:text-[#C17B5C] transition-colors line-clamp-2 min-h-[2.5rem]">
                             {service.name}
                           </h4>
                           {service.description && (
-                            <p className="text-sm text-[#6B5A4A] group-hover:text-[#5A4A3A] line-clamp-3 transition-colors duration-300">
+                            <p className="text-xs text-[#6B5A4A] group-hover:text-[#5A4A3A] line-clamp-2 transition-colors duration-300">
                               {service.description}
                             </p>
                           )}
