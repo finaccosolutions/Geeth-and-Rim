@@ -15,6 +15,7 @@ import { Account } from './pages/Account';
 import { Profile } from './pages/Profile';
 import { MyBookings } from './pages/MyBookings';
 import { Settings } from './pages/Settings';
+import { VerifySuccess } from './pages/VerifySuccess';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { Service } from './types';
@@ -28,6 +29,8 @@ function AppContent() {
     const path = window.location.pathname;
     if (path === '/admin') {
       setCurrentPage('admin');
+    } else if (path === '/verify-success' || path.includes('verify-success')) {
+      setCurrentPage('verify-success');
     }
   }, []);
 
@@ -61,6 +64,10 @@ function AppContent() {
 
   if (currentPage === 'auth') {
     return <Auth onNavigate={handleNavigate} />;
+  }
+
+  if (currentPage === 'verify-success') {
+    return <VerifySuccess onNavigate={handleNavigate} />;
   }
 
   return (

@@ -229,11 +229,13 @@ export const Home = ({ onNavigate }: HomeProps) => {
                         className="flex-shrink-0 w-52 bg-white rounded-xl overflow-hidden border-2 border-[#E8D5C4] hover:border-[#C17B5C] hover:shadow-xl transition-all duration-500 cursor-pointer group hover:-translate-y-1"
                       >
                         <div className="relative h-32 overflow-hidden">
-                          <img
-                            src={categoryImages[categories.find(c => c.id === selectedCategory)?.name || ''] || 'https://images.pexels.com/photos/3065209/pexels-photo-3065209.jpeg?auto=compress&cs=tinysrgb&w=400'}
-                            alt={service.name}
-                            className="w-full h-full object-cover group-hover:scale-110 group-hover:brightness-110 transition-all duration-700"
-                          />
+                          {categoryImages[categories.find(c => c.id === selectedCategory)?.name || ''] && (
+                            <img
+                              src={categoryImages[categories.find(c => c.id === selectedCategory)?.name || '']}
+                              alt={service.name}
+                              className="w-full h-full object-cover group-hover:scale-110 group-hover:brightness-110 transition-all duration-700"
+                            />
+                          )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent group-hover:from-[#C17B5C]/60 transition-all duration-500" />
                           <div className="absolute bottom-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:rotate-12">
                             <ChevronRight className="text-[#C17B5C]" size={16} />
@@ -296,14 +298,16 @@ export const Home = ({ onNavigate }: HomeProps) => {
         <div className="w-full px-4 md:px-8">
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              <div className="relative">
-                <div className="absolute -inset-4 bg-gradient-to-br from-[#C17B5C]/20 to-[#8B9D7F]/20 rounded-3xl -z-10" />
-                <img
-                  src={aboutImage || 'https://images.pexels.com/photos/3992868/pexels-photo-3992868.jpeg?auto=compress&cs=tinysrgb&w=800'}
-                  alt="Professional salon styling"
-                  className="rounded-2xl shadow-2xl w-full h-auto object-cover"
-                />
-              </div>
+              {aboutImage && (
+                <div className="relative">
+                  <div className="absolute -inset-4 bg-gradient-to-br from-[#C17B5C]/20 to-[#8B9D7F]/20 rounded-3xl -z-10" />
+                  <img
+                    src={aboutImage}
+                    alt="Professional salon styling"
+                    className="rounded-2xl shadow-2xl w-full h-auto object-cover"
+                  />
+                </div>
+              )}
 
               <div>
                 <h2 className="text-3xl md:text-4xl font-bold text-[#3D2E1F] mb-6">
@@ -353,8 +357,9 @@ export const Home = ({ onNavigate }: HomeProps) => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {galleryImages.map((img, index) => (
+            {galleryImages.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {galleryImages.map((img, index) => (
                 <div
                   key={img.image_key || index}
                   className="relative overflow-hidden rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 aspect-square group cursor-pointer"
@@ -367,17 +372,25 @@ export const Home = ({ onNavigate }: HomeProps) => {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#3D2E1F]/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-white rounded-2xl">
+                <p className="text-[#82896E] text-lg">No gallery images available yet</p>
+                <p className="text-sm text-[#82896E] mt-2">Please add images in the admin panel</p>
+              </div>
+            )}
 
-            <div className="text-center mt-10">
+            {galleryImages.length > 0 && (
+              <div className="text-center mt-10">
               <button
                 onClick={() => onNavigate('gallery')}
                 className="bg-[#C17B5C] hover:bg-[#A6684C] text-white px-8 py-3 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
               >
                 View Full Gallery
               </button>
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
