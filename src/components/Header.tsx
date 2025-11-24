@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, User, LogOut, ChevronDown, Calendar, Settings } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown, Calendar, Settings, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -77,19 +77,20 @@ export const Header = ({ currentPage, onNavigate }: HeaderProps) => {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-20">
             <div
-              className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity duration-300"
+              className="flex items-center space-x-3 cursor-pointer hover:opacity-90 transition-opacity duration-300 group"
               onClick={() => onNavigate('home')}
             >
-              {branding.logo_url ? (
-                <img
-                  src={branding.logo_url}
-                  alt={branding.site_name}
-                  className="h-12 w-auto object-contain"
-                />
-              ) : null}
-              <span className="text-2xl font-bold text-[#3D2E1F]">
-                {branding.site_name}
-              </span>
+              <div className="w-12 h-12 bg-gradient-to-br from-[#C17B5C] to-[#AD6B4B] rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow duration-300 transform group-hover:scale-110 duration-300">
+                <Sparkles className="text-white" size={24} />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-lg font-black text-[#264025] leading-tight">
+                  {branding.site_name}
+                </span>
+                <span className="text-xs font-semibold text-[#AD6B4B] tracking-widest">
+                  SALON & SPA
+                </span>
+              </div>
             </div>
 
             <nav className="hidden lg:flex items-center space-x-8">

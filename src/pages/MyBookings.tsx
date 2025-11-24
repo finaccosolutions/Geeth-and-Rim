@@ -309,7 +309,7 @@ export const MyBookings = ({ onNavigate }: BookingProps) => {
                   <p className="text-2xl text-[#264025] font-bold mt-2">₹{selectedBooking.service?.price}</p>
                 </div>
               </div>
-
+ 
               <div className="bg-gradient-to-br from-[#DDCBB7]/20 to-[#E8D5C4]/10 rounded-2xl p-6 border-2 border-[#DDCBB7]/30">
                 <label className="text-sm font-semibold text-[#82896E] uppercase tracking-wide">Status</label>
                 <div className="mt-3">

@@ -69,9 +69,28 @@ export const Profile = ({ onNavigate }: ProfileProps) => {
     );
   }
 
-  if (!user || !profile) {
+  if (!user) {
     onNavigate('auth');
     return null;
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen pt-32 pb-20 bg-gradient-to-br from-[#FAF6F1] to-[#E8D5C4]/30">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <button
+            onClick={() => onNavigate('account')}
+            className="flex items-center space-x-2 text-[#AD6B4B] hover:text-[#7B4B36] transition-colors duration-300 mb-8 group"
+          >
+            <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+            <span className="font-semibold">Back to Account</span>
+          </button>
+          <div className="text-center py-12">
+            <p className="text-[#82896E] text-lg">Loading profile information...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
