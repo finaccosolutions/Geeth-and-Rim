@@ -36,26 +36,17 @@ export const Auth = ({ onNavigate }: AuthProps) => {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
+          options: {
+            data: {
+              full_name: formData.full_name,
+              phone: formData.phone,
+            },
+          },
         });
 
         if (signUpError) throw signUpError;
 
         if (data.user) {
-          const { error: profileError } = await supabase.from('customer_profiles').upsert({
-            id: data.user.id,
-            full_name: formData.full_name,
-            email: formData.email,
-            phone: formData.phone,
-            updated_at: new Date().toISOString(),
-          }, {
-            onConflict: 'id'
-          }).select();
-
-          if (profileError) {
-            console.error('Profile creation error:', profileError);
-            throw new Error('Account created but profile setup failed. Please contact support.');
-          }
-
           setSuccess('Account created successfully! Logging you in...');
 
           setTimeout(async () => {
