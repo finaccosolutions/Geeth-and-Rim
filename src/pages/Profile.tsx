@@ -21,6 +21,8 @@ export const Profile = ({ onNavigate }: ProfileProps) => {
   useEffect(() => {
     if (user) {
       loadProfile();
+    } else {
+      setLoading(false);
     }
   }, [user]);
 
