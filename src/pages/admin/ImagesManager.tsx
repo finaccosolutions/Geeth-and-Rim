@@ -24,13 +24,27 @@ interface GalleryImage {
   created_at: string;
 }
 
+interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  image_url: string;
+  bio: string | null;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export const ImagesManager = () => {
   const [images, setImages] = useState<SiteImage[]>([]);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [activeTab, setActiveTab] = useState<string>('hero');
   const [isAdding, setIsAdding] = useState(false);
   const [editingImage, setEditingImage] = useState<SiteImage | null>(null);
   const [editingGalleryImage, setEditingGalleryImage] = useState<GalleryImage | null>(null);
+  const [editingTeamMember, setEditingTeamMember] = useState<TeamMember | null>(null);
   const [galleryCategory, setGalleryCategory] = useState<string>('');
   const [formData, setFormData] = useState({
     title: '',
@@ -38,13 +52,21 @@ export const ImagesManager = () => {
     image_key: '',
     is_active: true,
   });
+  const [teamFormData, setTeamFormData] = useState({
+    name: '',
+    role: '',
+    image_url: '',
+    bio: '',
+    is_active: true,
+  });
 
   const tabs = [
-    { id: 'hero', name: 'Hero Section', description: 'Main homepage hero images (4 images)' },
-    { id: 'hero_grid', name: 'Hero Grid', description: 'Homepage hero grid images (4 images)' },
+    { id: 'hero', name: 'Hero Section', description: 'Main homepage hero images (4 images max)', maxCount: 4 },
+    { id: 'hero_grid', name: 'Hero Grid', description: 'Homepage hero grid images (4 images max)', maxCount: 4 },
     { id: 'category', name: 'Service Categories', description: 'Category thumbnail images' },
     { id: 'home_gallery', name: 'Home Gallery', description: 'Gallery showcase on homepage' },
-    { id: 'about', name: 'About Section', description: 'About page images' },
+    { id: 'about', name: 'About Section', description: 'About page journey image' },
+    { id: 'team', name: 'Team Members', description: 'About page team section' },
     { id: 'gallery_page', name: 'Gallery Page', description: 'Manage gallery page images with categories' },
   ];
 
@@ -53,6 +75,8 @@ export const ImagesManager = () => {
   useEffect(() => {
     if (activeTab === 'gallery_page') {
       loadGalleryImages();
+    } else if (activeTab === 'team') {
+      loadTeamMembers();
     } else {
       loadImages();
     }
@@ -64,7 +88,17 @@ export const ImagesManager = () => {
       .select('*')
       .order('category, display_order');
 
-    if (data) setImages(data);
+    if (data) {
+      // Remove duplicates based on image_key
+      const uniqueImages = data.reduce((acc: SiteImage[], current) => {
+        const exists = acc.find(item => item.image_key === current.image_key && item.category === current.category);
+        if (!exists) {
+          acc.push(current);
+        }
+        return acc;
+      }, []);
+      setImages(uniqueImages);
+    }
   };
 
   const loadGalleryImages = async () => {
@@ -74,6 +108,62 @@ export const ImagesManager = () => {
       .order('category, display_order');
 
     if (data) setGalleryImages(data);
+  };
+
+  const loadTeamMembers = async () => {
+    const { data } = await supabase
+      .from('team_members')
+      .select('*')
+      .order('display_order');
+
+    if (data) setTeamMembers(data);
+  };
+
+  const handleSaveTeamMember = async () => {
+    if (editingTeamMember) {
+      await supabase
+        .from('team_members')
+        .update({
+          name: teamFormData.name,
+          role: teamFormData.role,
+          image_url: teamFormData.image_url,
+          bio: teamFormData.bio,
+          is_active: teamFormData.is_active,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingTeamMember.id);
+    } else {
+      const maxOrder = Math.max(...teamMembers.map(m => m.display_order), 0);
+      await supabase.from('team_members').insert({
+        name: teamFormData.name,
+        role: teamFormData.role,
+        image_url: teamFormData.image_url,
+        bio: teamFormData.bio,
+        is_active: teamFormData.is_active,
+        display_order: maxOrder + 1,
+      });
+    }
+    handleCancel();
+    loadTeamMembers();
+  };
+
+  const handleEditTeamMember = (member: TeamMember) => {
+    setEditingTeamMember(member);
+    setTeamFormData({
+      name: member.name,
+      role: member.role,
+      image_url: member.image_url,
+      bio: member.bio || '',
+      is_active: member.is_active,
+    });
+    setIsAdding(true);
+  };
+
+  const handleDeleteTeamMember = async (id: string) => {
+    if (confirm('Are you sure you want to delete this team member?')) {
+      await supabase.from('team_members').delete().eq('id', id);
+      loadTeamMembers();
+    }
   };
 
   const handleSave = async () => {
@@ -113,6 +203,14 @@ export const ImagesManager = () => {
           .eq('id', editingImage.id);
       } else {
         const categoryImages = images.filter((img) => img.category === activeTab);
+        const currentTabInfo = tabs.find(t => t.id === activeTab);
+        
+        // Check max count
+        if (currentTabInfo?.maxCount && categoryImages.length >= currentTabInfo.maxCount) {
+          alert(`Maximum ${currentTabInfo.maxCount} images allowed for ${currentTabInfo.name}`);
+          return;
+        }
+
         await supabase.from('site_images').insert({
           image_key: formData.image_key,
           title: formData.title,
@@ -165,6 +263,7 @@ export const ImagesManager = () => {
   const handleCancel = () => {
     setEditingImage(null);
     setEditingGalleryImage(null);
+    setEditingTeamMember(null);
     setGalleryCategory('');
     setIsAdding(false);
     setFormData({
@@ -173,11 +272,19 @@ export const ImagesManager = () => {
       image_key: '',
       is_active: true,
     });
+    setTeamFormData({
+      name: '',
+      role: '',
+      image_url: '',
+      bio: '',
+      is_active: true,
+    });
   };
 
-  const currentTabImages = activeTab === 'gallery_page' ? [] : images.filter((img) => img.category === activeTab);
+  const currentTabImages = activeTab === 'gallery_page' ? [] : activeTab === 'team' ? [] : images.filter((img) => img.category === activeTab);
   const currentTabInfo = tabs.find((tab) => tab.id === activeTab);
   const isGalleryTab = activeTab === 'gallery_page';
+  const isTeamTab = activeTab === 'team';
 
   return (
     <div>
@@ -190,9 +297,15 @@ export const ImagesManager = () => {
 
       <div className="flex flex-wrap gap-3 mb-6">
         {tabs.map((tab) => {
-          const count = tab.id === 'gallery_page'
-            ? galleryImages.length
-            : images.filter((img) => img.category === tab.id).length;
+          let count = 0;
+          if (tab.id === 'gallery_page') {
+            count = galleryImages.length;
+          } else if (tab.id === 'team') {
+            count = teamMembers.length;
+          } else {
+            count = images.filter((img) => img.category === tab.id).length;
+          }
+          
           return (
             <button
               key={tab.id}
@@ -224,6 +337,11 @@ export const ImagesManager = () => {
         <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
           <h3 className="font-bold text-blue-900 mb-1">{currentTabInfo.name}</h3>
           <p className="text-sm text-blue-800">{currentTabInfo.description}</p>
+          {currentTabInfo.maxCount && (
+            <p className="text-xs text-blue-700 mt-2 font-semibold">
+              Maximum {currentTabInfo.maxCount} images allowed
+            </p>
+          )}
         </div>
       )}
 
@@ -233,8 +351,8 @@ export const ImagesManager = () => {
             {currentTabInfo?.name || 'Images'}
           </h3>
           <p className="text-sm text-[#82896E]">
-            {isGalleryTab ? galleryImages.length : currentTabImages.length} image{(isGalleryTab ? galleryImages.length : currentTabImages.length) !== 1 ? 's' : ''} in this
-            category
+            {isTeamTab ? teamMembers.length : isGalleryTab ? galleryImages.length : currentTabImages.length} 
+            {' '}{isTeamTab ? 'team member' : 'image'}{(isTeamTab ? teamMembers.length : isGalleryTab ? galleryImages.length : currentTabImages.length) !== 1 ? 's' : ''} in this category
           </p>
         </div>
         <button
@@ -242,11 +360,105 @@ export const ImagesManager = () => {
           className="flex items-center space-x-2 bg-[#AD6B4B] text-white px-4 py-2 rounded-lg hover:bg-[#7B4B36] transition-colors"
         >
           <Plus size={20} />
-          <span>Add Image</span>
+          <span>Add {isTeamTab ? 'Team Member' : 'Image'}</span>
         </button>
       </div>
 
-      {isAdding && (
+      {isAdding && isTeamTab && (
+        <div className="bg-[#DDCBB7]/20 rounded-xl p-6 mb-6 border-2 border-[#AD6B4B]">
+          <h3 className="text-xl font-bold text-[#264025] mb-4">
+            {editingTeamMember ? 'Edit Team Member' : 'Add New Team Member'}
+          </h3>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-[#264025] mb-2">Name</label>
+                <input
+                  type="text"
+                  value={teamFormData.name}
+                  onChange={(e) => setTeamFormData({ ...teamFormData, name: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none"
+                  placeholder="e.g., Geeta Sharma"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[#264025] mb-2">Role/Position</label>
+                <input
+                  type="text"
+                  value={teamFormData.role}
+                  onChange={(e) => setTeamFormData({ ...teamFormData, role: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none"
+                  placeholder="e.g., Founder & Master Stylist"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-[#264025] mb-2">Image URL</label>
+              <input
+                type="text"
+                value={teamFormData.image_url}
+                onChange={(e) => setTeamFormData({ ...teamFormData, image_url: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none"
+                placeholder="https://images.pexels.com/..."
+              />
+              {teamFormData.image_url && (
+                <div className="mt-3 p-3 bg-white rounded-lg border-2 border-[#DDCBB7]">
+                  <p className="text-xs font-semibold text-[#264025] mb-2">Preview:</p>
+                  <img
+                    src={teamFormData.image_url}
+                    alt="Preview"
+                    className="w-32 h-32 object-cover rounded-lg"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-[#264025] mb-2">Bio (Optional)</label>
+              <textarea
+                value={teamFormData.bio}
+                onChange={(e) => setTeamFormData({ ...teamFormData, bio: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none resize-none"
+                rows={3}
+                placeholder="Brief description about the team member..."
+              />
+            </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="team_active"
+                checked={teamFormData.is_active}
+                onChange={(e) => setTeamFormData({ ...teamFormData, is_active: e.target.checked })}
+                className="w-5 h-5 text-[#AD6B4B] border-gray-300 rounded focus:ring-[#AD6B4B]"
+              />
+              <label htmlFor="team_active" className="ml-2 text-[#264025] font-medium">
+                Active (visible on website)
+              </label>
+            </div>
+          </div>
+          <div className="flex space-x-4 mt-6">
+            <button
+              onClick={handleSaveTeamMember}
+              className="flex items-center space-x-2 bg-[#AD6B4B] text-white px-6 py-2 rounded-lg hover:bg-[#7B4B36] transition-colors"
+            >
+              <Save size={18} />
+              <span>Save</span>
+            </button>
+            <button
+              onClick={handleCancel}
+              className="flex items-center space-x-2 bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              <X size={18} />
+              <span>Cancel</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isAdding && !isTeamTab && (
         <div className="bg-[#DDCBB7]/20 rounded-xl p-6 mb-6 border-2 border-[#AD6B4B]">
           <h3 className="text-xl font-bold text-[#264025] mb-4">
             {(editingImage || editingGalleryImage) ? 'Edit Image' : `Add New Image to ${currentTabInfo?.name}`}
@@ -292,7 +504,7 @@ export const ImagesManager = () => {
                   value={formData.image_key}
                   onChange={(e) => setFormData({ ...formData, image_key: e.target.value })}
                   className="w-full px-4 py-2 rounded-lg border-2 border-[#DDCBB7] focus:border-[#AD6B4B] outline-none"
-                  placeholder={`e.g., ${activeTab}_main_banner`}
+                  placeholder={`e.g., ${activeTab}_${currentTabImages.length + 1}`}
                 />
                 <p className="text-xs text-[#82896E] mt-1">
                   Used to identify this image in the code. Must be unique.
@@ -355,7 +567,71 @@ export const ImagesManager = () => {
         </div>
       )}
 
-      {isGalleryTab ? (
+      {isTeamTab ? (
+        teamMembers.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-2xl shadow-lg border-2 border-[#DDCBB7]">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Plus className="text-gray-400" size={40} />
+            </div>
+            <p className="text-[#82896E] text-lg mb-2">No team members yet</p>
+            <p className="text-sm text-[#82896E]">
+              Click "Add Team Member" to add your first team member
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {teamMembers.map((member) => (
+              <div
+                key={member.id}
+                className="bg-white rounded-xl shadow-lg overflow-hidden group border-2 border-gray-100 hover:border-[#AD6B4B] transition-all duration-300"
+              >
+                <div className="relative h-64">
+                  <img
+                    src={member.image_url}
+                    alt={member.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-2 right-2 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleEditTeamMember(member)}
+                      className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-lg"
+                    >
+                      <Edit size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTeamMember(member.id)}
+                      className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors shadow-lg"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                    <h4 className="font-bold text-white text-lg">{member.name}</h4>
+                    <p className="text-white/90 text-sm">{member.role}</p>
+                  </div>
+                </div>
+                {member.bio && (
+                  <div className="p-4">
+                    <p className="text-sm text-[#82896E]">{member.bio}</p>
+                  </div>
+                )}
+                <div className="px-4 pb-4">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      member.is_active
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    {member.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : isGalleryTab ? (
+        // Gallery images rendering (keep existing code)
         galleryImages.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl shadow-lg border-2 border-[#DDCBB7]">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -491,18 +767,6 @@ export const ImagesManager = () => {
           ))}
         </div>
       )}
-
-      <div className="mt-8 bg-amber-50 border-2 border-amber-200 rounded-xl p-6">
-        <h4 className="font-bold text-amber-900 mb-3">Image Usage Guide</h4>
-        <div className="space-y-2 text-sm text-amber-800">
-          <p><strong>Hero Section:</strong> Large banner images for the homepage hero slider</p>
-          <p><strong>Hero Grid:</strong> 4 images for homepage hero grid (exactly 4 recommended)</p>
-          <p><strong>Service Categories:</strong> Thumbnail images for each service category</p>
-          <p><strong>Home Gallery:</strong> Showcase images displayed on the homepage gallery section</p>
-          <p><strong>About Section:</strong> Images used on the About page</p>
-          <p><strong>Gallery Page:</strong> Full gallery images with categories (Bridal, Hair, Nails, etc.)</p>
-        </div>
-      </div>
     </div>
   );
 };

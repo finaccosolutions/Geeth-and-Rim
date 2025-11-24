@@ -119,3 +119,16 @@ export interface CustomerProfile {
   created_at: string;
   updated_at: string;
 }
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  image_url: string;
+  bio: string | null;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
