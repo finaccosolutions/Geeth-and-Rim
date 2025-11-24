@@ -117,7 +117,7 @@ export const Home = ({ onNavigate }: HomeProps) => {
               >
                 <ChevronLeft size={24} />
               </button>
-
+ 
               <div
                 ref={categoriesScrollRef}
                 className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth px-12"
@@ -141,7 +141,7 @@ export const Home = ({ onNavigate }: HomeProps) => {
                           ? 'ring-4 ring-[#C17B5C] shadow-[#C17B5C]/50 transform scale-105'
                           : 'hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)] hover:-translate-y-2'
                       }`}>
-                        <div className="relative h-80 overflow-hidden">
+                        <div className="relative h-30 overflow-hidden">
                           <img
                             src={categoryImages[category.name] || 'https://images.pexels.com/photos/3065209/pexels-photo-3065209.jpeg?auto=compress&cs=tinysrgb&w=400'}
                             alt={category.name}
@@ -218,12 +218,6 @@ export const Home = ({ onNavigate }: HomeProps) => {
                   <h3 className="text-2xl md:text-3xl font-bold text-[#3D2E1F]">
                     {categories.find(c => c.id === selectedCategory)?.name} Services
                   </h3>
-                  <button
-                    onClick={() => onNavigate('booking')}
-                    className="bg-[#C17B5C] hover:bg-[#A6684C] text-white px-6 py-3 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg text-sm"
-                  >
-                    Book Now
-                  </button>
                 </div>
 
                 <div className="relative">

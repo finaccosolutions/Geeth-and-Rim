@@ -7,6 +7,17 @@ interface ServicesProps {
   onNavigate: (page: string, data?: unknown) => void;
 }
 
+const categoryColors = [
+  { bg: 'from-rose-50 to-rose-100', border: 'border-rose-300', hover: 'hover:border-rose-500', text: 'text-rose-700', icon: 'bg-rose-500' },
+  { bg: 'from-blue-50 to-blue-100', border: 'border-blue-300', hover: 'hover:border-blue-500', text: 'text-blue-700', icon: 'bg-blue-500' },
+  { bg: 'from-emerald-50 to-emerald-100', border: 'border-emerald-300', hover: 'hover:border-emerald-500', text: 'text-emerald-700', icon: 'bg-emerald-500' },
+  { bg: 'from-amber-50 to-amber-100', border: 'border-amber-300', hover: 'hover:border-amber-500', text: 'text-amber-700', icon: 'bg-amber-500' },
+  { bg: 'from-violet-50 to-violet-100', border: 'border-violet-300', hover: 'hover:border-violet-500', text: 'text-violet-700', icon: 'bg-violet-500' },
+  { bg: 'from-teal-50 to-teal-100', border: 'border-teal-300', hover: 'hover:border-teal-500', text: 'text-teal-700', icon: 'bg-teal-500' },
+  { bg: 'from-orange-50 to-orange-100', border: 'border-orange-300', hover: 'hover:border-orange-500', text: 'text-orange-700', icon: 'bg-orange-500' },
+  { bg: 'from-pink-50 to-pink-100', border: 'border-pink-300', hover: 'hover:border-pink-500', text: 'text-pink-700', icon: 'bg-pink-500' },
+];
+
 export const Services = ({ onNavigate }: ServicesProps) => {
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -33,6 +44,10 @@ export const Services = ({ onNavigate }: ServicesProps) => {
 
   const getServicesByCategory = (categoryId: string) => {
     return services.filter((s) => s.category_id === categoryId);
+  };
+
+  const getCategoryColor = (index: number) => {
+    return categoryColors[index % categoryColors.length];
   };
 
   return (
@@ -96,15 +111,17 @@ export const Services = ({ onNavigate }: ServicesProps) => {
 
         {selectedCategory === 'all' ? (
           <div className="max-w-7xl mx-auto">
-            {categories.map((category) => {
+            {categories.map((category, categoryIndex) => {
               const categoryServices = getServicesByCategory(category.id);
               if (categoryServices.length === 0) return null;
+              
+              const colors = getCategoryColor(categoryIndex);
 
               return (
                 <div key={category.id} className="mb-16">
                   <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-[#DDCBB7]">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-[#AD6B4B] to-[#C17B5C] rounded-full flex items-center justify-center">
+                      <div className={`w-10 h-10 ${colors.icon} rounded-full flex items-center justify-center shadow-lg`}>
                         <Star className="text-white" size={20} />
                       </div>
                       <div>
@@ -121,34 +138,26 @@ export const Services = ({ onNavigate }: ServicesProps) => {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                     {categoryServices.map((service) => (
                       <div
                         key={service.id}
                         onClick={() => onNavigate('booking', service)}
-                        className="group relative bg-white rounded-2xl p-5 border-2 border-[#E8D5C4] hover:border-[#C17B5C] cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                        className={`group relative bg-gradient-to-br ${colors.bg} rounded-xl p-3 border-2 ${colors.border} ${colors.hover} cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1`}
                       >
-                        <div className="absolute top-3 right-3 w-8 h-8 bg-gradient-to-br from-[#C17B5C]/10 to-[#A6684C]/10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
-                          <Sparkles className="text-[#C17B5C]" size={16} />
+                        <div className="absolute top-2 right-2 w-6 h-6 bg-white/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-md">
+                          <Sparkles className={colors.text} size={12} />
                         </div>
                         
-                        <h3 className="font-bold text-[#264025] text-base mb-2 pr-8 group-hover:text-[#C17B5C] transition-colors duration-300 line-clamp-2 min-h-[3rem]">
+                        <h3 className={`font-bold ${colors.text} text-sm mb-1.5 pr-6 group-hover:scale-105 transition-transform duration-300 line-clamp-2 min-h-[2.5rem]`}>
                           {service.name}
                         </h3>
                         
                         {service.description && (
-                          <p className="text-sm text-[#82896E] line-clamp-3 mb-3">
+                          <p className="text-xs text-gray-600 line-clamp-2 mb-2">
                             {service.description}
                           </p>
                         )}
-                        
-                        <div className="pt-3 mt-3 border-t border-[#E8D5C4] group-hover:border-[#C17B5C] transition-colors duration-300">
-                          <div className="flex items-center justify-center">
-                            <span className="text-[#C17B5C] group-hover:text-[#264025] font-bold text-sm transition-colors duration-300">
-                              Book Now →
-                            </span>
-                          </div>
-                        </div>
                       </div>
                     ))}
                   </div>
@@ -162,7 +171,7 @@ export const Services = ({ onNavigate }: ServicesProps) => {
               <div>
                 <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-[#DDCBB7]">
                   <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-[#AD6B4B] to-[#C17B5C] rounded-full flex items-center justify-center">
+                    <div className={`w-12 h-12 ${getCategoryColor(categories.findIndex(c => c.id === selectedCategory)).icon} rounded-full flex items-center justify-center shadow-lg`}>
                       <Star className="text-white" size={24} />
                     </div>
                     <h2 className="text-3xl md:text-4xl font-bold text-[#264025]">
@@ -174,36 +183,31 @@ export const Services = ({ onNavigate }: ServicesProps) => {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {filteredServices.map((service) => (
-                    <div
-                      key={service.id}
-                      onClick={() => onNavigate('booking', service)}
-                      className="group relative bg-white rounded-2xl p-5 border-2 border-[#E8D5C4] hover:border-[#C17B5C] cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-                    >
-                      <div className="absolute top-3 right-3 w-8 h-8 bg-gradient-to-br from-[#C17B5C]/10 to-[#A6684C]/10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
-                        <Sparkles className="text-[#C17B5C]" size={16} />
-                      </div>
-                      
-                      <h3 className="font-bold text-[#264025] text-base mb-2 pr-8 group-hover:text-[#C17B5C] transition-colors duration-300 line-clamp-2 min-h-[3rem]">
-                        {service.name}
-                      </h3>
-                      
-                      {service.description && (
-                        <p className="text-sm text-[#82896E] line-clamp-3 mb-3">
-                          {service.description}
-                        </p>
-                      )}
-                      
-                      <div className="pt-3 mt-3 border-t border-[#E8D5C4] group-hover:border-[#C17B5C] transition-colors duration-300">
-                        <div className="flex items-center justify-center">
-                          <span className="text-[#C17B5C] group-hover:text-[#264025] font-bold text-sm transition-colors duration-300">
-                            Book Now →
-                          </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {filteredServices.map((service) => {
+                    const colors = getCategoryColor(categories.findIndex(c => c.id === selectedCategory));
+                    return (
+                      <div
+                        key={service.id}
+                        onClick={() => onNavigate('booking', service)}
+                        className={`group relative bg-gradient-to-br ${colors.bg} rounded-xl p-3 border-2 ${colors.border} ${colors.hover} cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1`}
+                      >
+                        <div className="absolute top-2 right-2 w-6 h-6 bg-white/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-md">
+                          <Sparkles className={colors.text} size={12} />
                         </div>
+                        
+                        <h3 className={`font-bold ${colors.text} text-sm mb-1.5 pr-6 group-hover:scale-105 transition-transform duration-300 line-clamp-2 min-h-[2.5rem]`}>
+                          {service.name}
+                        </h3>
+                        
+                        {service.description && (
+                          <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                            {service.description}
+                          </p>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (
