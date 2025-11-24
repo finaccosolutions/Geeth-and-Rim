@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Menu, X, User, LogOut, ChevronDown, Calendar, Settings, Sparkles } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown, Calendar, Settings, Scissors } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -81,7 +81,7 @@ export const Header = ({ currentPage, onNavigate }: HeaderProps) => {
               onClick={() => onNavigate('home')}
             >
               <div className="w-12 h-12 bg-gradient-to-br from-[#C17B5C] to-[#AD6B4B] rounded-full flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow duration-300 transform group-hover:scale-110 duration-300">
-                <Sparkles className="text-white" size={24} />
+                <Scissors className="text-white" size={24} />
               </div>
               <div className="flex flex-col">
                 <span className="text-lg font-black text-[#264025] leading-tight">

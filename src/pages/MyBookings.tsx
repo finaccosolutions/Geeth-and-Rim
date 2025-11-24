@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, X, ChevronLeft, MapPin, DollarSign } from 'lucide-react';
+import { Calendar, Clock, X, DollarSign } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Booking, Service } from '../types';
@@ -142,14 +142,6 @@ export const MyBookings = ({ onNavigate }: BookingProps) => {
   return (
     <div className="min-h-screen pt-32 pb-20 bg-gradient-to-br from-[#FAF6F1] to-[#E8D5C4]/30">
       <div className="container mx-auto px-4 max-w-6xl">
-        <button
-          onClick={() => onNavigate('account')}
-          className="flex items-center space-x-2 text-[#AD6B4B] hover:text-[#7B4B36] transition-colors duration-300 mb-8 group"
-        >
-          <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-          <span className="font-semibold">Back to Account</span>
-        </button>
-
         <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
           <div className="bg-gradient-to-r from-[#264025] to-[#7B4B36] p-12">
             <div className="flex items-center space-x-4">
