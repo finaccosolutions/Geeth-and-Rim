@@ -82,12 +82,8 @@ export const sendBookingEmail = async (bookingData: BookingEmailData): Promise<b
                   <span class="detail-value">${bookingData.startTime}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">Duration:</span>
+                  <span class="detail-label">Estimated Duration:</span>
                   <span class="detail-value">${bookingData.duration} minutes</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">Price:</span>
-                  <span class="detail-value">₹${bookingData.price.toFixed(2)}</span>
                 </div>
                 ${bookingData.notes ? `
                 <div class="detail-row">
@@ -101,17 +97,16 @@ export const sendBookingEmail = async (bookingData: BookingEmailData): Promise<b
               <ul style="color: #82896E;">
                 <li>Your appointment is confirmed and reserved</li>
                 <li>Please arrive 10 minutes before your appointment time</li>
-                <li>Bring this confirmation email with you</li>
               </ul>
 
               <div style="background: #DDCBB7; padding: 15px; border-radius: 8px; margin-top: 20px;">
                 <p style="margin: 0;"><strong>Need to make changes?</strong></p>
-                <p style="margin: 5px 0 0 0;">Contact us at <a href="tel:+919876543210" style="color: #AD6B4B;">+91 98765 43210</a> or email <a href="mailto:booking@geetandrim.com" style="color: #AD6B4B;">booking@geetandrim.com</a></p>
+                <p style="margin: 5px 0 0 0;">Contact us at <a href="tel:+919074701712" style="color: #AD6B4B;">+91 90747 01712</a> or email <a href="mailto:booking@geetandrim.com" style="color: #AD6B4B;">booking@geetandrim.com</a></p>
               </div>
             </div>
             <div class="footer">
               <p>© ${new Date().getFullYear()} Geetandrim Salon. All rights reserved.</p>
-              <p>123 Beauty Street, Salon District, City - 123456</p>
+              <p>Thrissur, Kerala, India</p>
             </div>
           </div>
         </body>
@@ -176,7 +171,7 @@ export const sendBookingEmail = async (bookingData: BookingEmailData): Promise<b
                   <span class="detail-value">${bookingData.startTime}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">Duration:</span>
+                  <span class="detail-label">Estmated Duration:</span>
                   <span class="detail-value">${bookingData.duration} minutes</span>
                 </div>
                 <div class="detail-row">

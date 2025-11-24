@@ -219,10 +219,6 @@ export const MyBookings = ({ onNavigate }: BookingProps) => {
                             <Clock size={18} className="text-[#AD6B4B]" />
                             <span className="font-medium">{formatTime(booking.start_time)}</span>
                           </div>
-                          <div className="flex items-center space-x-2 text-[#82896E]">
-                            <DollarSign size={18} className="text-[#AD6B4B]" />
-                            <span className="font-medium">₹{booking.service?.price}</span>
-                          </div>
                         </div>
 
                         {booking.service?.description && (
@@ -285,20 +281,6 @@ export const MyBookings = ({ onNavigate }: BookingProps) => {
                   <p className="text-lg text-[#264025] font-semibold">
                     {formatTime(selectedBooking.start_time)}
                   </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-[#DDCBB7]/20 to-[#E8D5C4]/10 rounded-2xl p-6 border-2 border-[#DDCBB7]/30">
-                  <label className="text-sm font-semibold text-[#82896E] uppercase tracking-wide">Duration</label>
-                  <p className="text-lg text-[#264025] font-semibold mt-2">
-                    {selectedBooking.service?.duration_minutes} minutes
-                  </p>
-                </div>
-
-                <div className="bg-gradient-to-br from-[#DDCBB7]/20 to-[#E8D5C4]/10 rounded-2xl p-6 border-2 border-[#DDCBB7]/30">
-                  <label className="text-sm font-semibold text-[#82896E] uppercase tracking-wide">Price</label>
-                  <p className="text-2xl text-[#264025] font-bold mt-2">₹{selectedBooking.service?.price}</p>
                 </div>
               </div>
  
