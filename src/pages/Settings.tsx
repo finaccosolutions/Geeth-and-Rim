@@ -126,6 +126,9 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
   }
 
   if (!user || !profile) {
+    if (!loading) {
+      onNavigate('auth');
+    }
     return null;
   }
 
