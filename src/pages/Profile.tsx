@@ -26,6 +26,12 @@ export const Profile = ({ onNavigate }: ProfileProps) => {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!loading && !user) {
+      onNavigate('auth');
+    }
+  }, [loading, user, onNavigate]);
+
   const loadProfile = async () => {
     if (!user) return;
 
@@ -72,7 +78,6 @@ export const Profile = ({ onNavigate }: ProfileProps) => {
   }
 
   if (!user || !profile) {
-    onNavigate('auth');
     return null;
   }
 
