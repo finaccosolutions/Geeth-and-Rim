@@ -41,16 +41,30 @@ export const Auth = ({ onNavigate }: AuthProps) => {
         if (signUpError) throw signUpError;
 
         if (data.user) {
-          await supabase.from('customer_profiles').insert({
+          const { error: profileError } = await supabase.from('customer_profiles').insert({
             id: data.user.id,
             full_name: formData.full_name,
             email: formData.email,
             phone: formData.phone,
-          });
+          }).select();
 
-          setSuccess('Account created successfully! Please login.');
-          setIsLogin(true);
-          setFormData({ email: formData.email, password: '', full_name: '', phone: '' });
+          if (profileError) {
+            console.error('Profile creation error:', profileError);
+            throw new Error('Account created but profile setup failed. Please contact support.');
+          }
+
+          setSuccess('Account created successfully! Logging you in...');
+
+          setTimeout(async () => {
+            try {
+              await signIn(formData.email, formData.password);
+              onNavigate('home');
+            } catch (loginError) {
+              setSuccess('Account created successfully! Please login.');
+              setIsLogin(true);
+              setFormData({ email: formData.email, password: '', full_name: '', phone: '' });
+            }
+          }, 1000);
         }
       }
     } catch (err: unknown) {
