@@ -22,7 +22,7 @@ export const Footer = () => {
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-2xl font-bold text-[#AD6B4B] mb-4">Geetandrim</h3>
+            <h3 className="text-2xl font-bold text-[#AD6B4B] mb-4">Geet & Rim Salon</h3>
             <p className="text-sm leading-relaxed mb-4">
               Premium salon services for your beauty and wellness needs. Experience luxury and professionalism.
             </p>
@@ -53,11 +53,6 @@ export const Footer = () => {
               <li>
                 <a href="#" className="hover:text-[#AD6B4B] transition-colors duration-300">
                   Services
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-[#AD6B4B] transition-colors duration-300">
-                  Wedding Packages
                 </a>
               </li>
               <li>
@@ -129,7 +124,7 @@ export const Footer = () => {
         </div>
 
         <div className="border-t border-[#82896E] mt-8 pt-8 text-center text-sm">
-          <p>© {new Date().getFullYear()} Geetandrim Salon. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Geet & Rim Salon. All rights reserved.</p>
         </div>
       </div>
     </footer>

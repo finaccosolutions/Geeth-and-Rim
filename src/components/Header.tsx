@@ -11,7 +11,7 @@ interface HeaderProps {
 export const Header = ({ currentPage, onNavigate }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
-  const [branding, setBranding] = useState({ site_name: 'Geetandrim', logo_url: null as string | null });
+  const [branding, setBranding] = useState({ site_name: 'Geet & Rim', logo_url: null as string | null });
   const [userName, setUserName] = useState<string>('');
   const { user, signOut } = useAuth();
   const accountMenuRef = useRef<HTMLDivElement>(null);
