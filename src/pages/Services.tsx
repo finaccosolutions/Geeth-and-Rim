@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Clock, IndianRupee } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Service, ServiceCategory } from '../types';
 
@@ -36,30 +36,30 @@ export const Services = ({ onNavigate }: ServicesProps) => {
   };
 
   return (
-    <div className="min-h-screen pt-32 pb-20">
+    <div className="min-h-screen pt-32 pb-20 bg-gradient-to-b from-white to-[#FAF6F1]">
       <div className="w-full px-4 md:px-8 lg:px-12">
-        <div className="text-center mb-12 animate-fade-in">
-          <h1 className="text-5xl md:text-6xl font-bold text-[#264025] mb-4">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl md:text-5xl font-bold text-[#264025] mb-3">
             Our Services
           </h1>
-          <p className="text-xl text-[#82896E] max-w-2xl mx-auto mb-8">
+          <p className="text-base text-[#82896E] max-w-2xl mx-auto mb-6">
             Explore our comprehensive range of beauty and wellness services
           </p>
           <button
             onClick={() => onNavigate('booking')}
-            className="bg-[#AD6B4B] text-white px-10 py-4 rounded-full text-lg font-semibold hover:bg-[#7B4B36] transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl"
+            className="bg-[#AD6B4B] text-white px-8 py-3 rounded-full font-semibold hover:bg-[#7B4B36] transition-all duration-300 shadow-lg"
           >
-            Book Your Appointment
+            Book Appointment
           </button>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-3 mb-12">
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
           <button
             onClick={() => setSelectedCategory('all')}
-            className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
               selectedCategory === 'all'
-                ? 'bg-[#AD6B4B] text-white shadow-lg'
-                : 'bg-white text-[#264025] hover:bg-[#DDCBB7] shadow-md'
+                ? 'bg-[#AD6B4B] text-white shadow-md'
+                : 'bg-white text-[#264025] hover:bg-[#DDCBB7] shadow-sm'
             }`}
           >
             All Services
@@ -68,10 +68,10 @@ export const Services = ({ onNavigate }: ServicesProps) => {
             <button
               key={category.id}
               onClick={() => setSelectedCategory(category.id)}
-              className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 ${
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
                 selectedCategory === category.id
-                  ? 'bg-[#AD6B4B] text-white shadow-lg'
-                  : 'bg-white text-[#264025] hover:bg-[#DDCBB7] shadow-md'
+                  ? 'bg-[#AD6B4B] text-white shadow-md'
+                  : 'bg-white text-[#264025] hover:bg-[#DDCBB7] shadow-sm'
               }`}
             >
               {category.name}
@@ -80,32 +80,47 @@ export const Services = ({ onNavigate }: ServicesProps) => {
         </div>
 
         {selectedCategory === 'all' ? (
-          <div className="space-y-12">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-7xl mx-auto">
             {categories.map((category) => {
               const categoryServices = getServicesByCategory(category.id);
               if (categoryServices.length === 0) return null;
 
               return (
-                <div key={category.id} className="bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-shadow duration-500">
-                  <div className="bg-gradient-to-r from-[#264025] to-[#7B4B36] p-6 md:p-8">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">{category.name}</h2>
+                <div
+                  key={category.id}
+                  className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 border border-[#DDCBB7]"
+                >
+                  <div className="bg-gradient-to-r from-[#264025] to-[#7B4B36] px-5 py-3">
+                    <h2 className="text-xl font-bold text-white">{category.name}</h2>
                     {category.description && (
-                      <p className="text-[#DDCBB7] text-lg">{category.description}</p>
+                      <p className="text-[#DDCBB7] text-sm mt-1">{category.description}</p>
                     )}
                   </div>
-                  <div className="p-6 md:p-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4">
+                    <div className="space-y-2">
                       {categoryServices.map((service) => (
                         <div
                           key={service.id}
-                          className="group flex items-center justify-between p-5 rounded-xl bg-gradient-to-r from-[#DDCBB7]/10 to-transparent border-2 border-[#DDCBB7] hover:border-[#AD6B4B] hover:shadow-lg transition-all duration-300 cursor-pointer"
+                          onClick={() => onNavigate('booking', service)}
+                          className="group flex items-center justify-between px-4 py-3 rounded-lg hover:bg-[#DDCBB7]/20 border border-transparent hover:border-[#AD6B4B] transition-all duration-300 cursor-pointer"
                         >
-                          <div className="flex-1">
-                            <h3 className="text-lg font-bold text-[#264025] group-hover:text-[#AD6B4B] transition-colors duration-300">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-base font-semibold text-[#264025] group-hover:text-[#AD6B4B] transition-colors truncate">
                               {service.name}
                             </h3>
+                            {service.description && (
+                              <p className="text-xs text-[#82896E] line-clamp-1 mt-0.5">
+                                {service.description}
+                              </p>
+                            )}
                           </div>
-                          <ChevronRight className="text-[#82896E] group-hover:text-[#AD6B4B] group-hover:translate-x-1 transition-all duration-300" size={24} />
+                          <div className="flex items-center space-x-3 ml-4 flex-shrink-0">
+
+                            <ChevronRight
+                              className="text-[#82896E] group-hover:text-[#AD6B4B] group-hover:translate-x-1 transition-all duration-300"
+                              size={18}
+                            />
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -115,37 +130,56 @@ export const Services = ({ onNavigate }: ServicesProps) => {
             })}
           </div>
         ) : (
-          <div>
+          <div className="max-w-4xl mx-auto">
             {filteredServices.length > 0 ? (
-              <div className="bg-white rounded-3xl shadow-xl overflow-hidden p-6 md:p-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredServices.map((service) => (
-                    <div
-                      key={service.id}
-                      className="group flex items-center justify-between p-5 rounded-xl bg-gradient-to-r from-[#DDCBB7]/10 to-transparent border-2 border-[#DDCBB7] hover:border-[#AD6B4B] hover:shadow-lg transition-all duration-300 cursor-pointer"
-                    >
-                      <div className="flex-1">
-                        <h3 className="text-lg font-bold text-[#264025] group-hover:text-[#AD6B4B] transition-colors duration-300">
-                          {service.name}
-                        </h3>
+              <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-[#DDCBB7]">
+                <div className="bg-gradient-to-r from-[#264025] to-[#7B4B36] px-5 py-3">
+                  <h2 className="text-xl font-bold text-white">
+                    {categories.find((c) => c.id === selectedCategory)?.name} Services
+                  </h2>
+                </div>
+                <div className="p-4">
+                  <div className="space-y-2">
+                    {filteredServices.map((service) => (
+                      <div
+                        key={service.id}
+                        onClick={() => onNavigate('booking', service)}
+                        className="group flex items-center justify-between px-4 py-3 rounded-lg hover:bg-[#DDCBB7]/20 border border-transparent hover:border-[#AD6B4B] transition-all duration-300 cursor-pointer"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base font-semibold text-[#264025] group-hover:text-[#AD6B4B] transition-colors truncate">
+                            {service.name}
+                          </h3>
+                          {service.description && (
+                            <p className="text-xs text-[#82896E] line-clamp-1 mt-0.5">
+                              {service.description}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-3 ml-4 flex-shrink-0">
+
+                          <ChevronRight
+                            className="text-[#82896E] group-hover:text-[#AD6B4B] group-hover:translate-x-1 transition-all duration-300"
+                            size={18}
+                          />
+                        </div>
                       </div>
-                      <ChevronRight className="text-[#82896E] group-hover:text-[#AD6B4B] group-hover:translate-x-1 transition-all duration-300" size={24} />
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="text-center py-12 bg-white rounded-2xl shadow-lg">
-                <p className="text-[#82896E] text-lg">No services found in this category</p>
+                <p className="text-[#82896E] text-base">No services found in this category</p>
               </div>
             )}
           </div>
         )}
 
-        <div className="text-center mt-12">
+        <div className="text-center mt-10">
           <button
             onClick={() => onNavigate('booking')}
-            className="bg-[#264025] text-white px-10 py-4 rounded-full text-lg font-semibold hover:bg-[#AD6B4B] transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl"
+            className="bg-[#264025] text-white px-8 py-3 rounded-full font-semibold hover:bg-[#AD6B4B] transition-all duration-300 shadow-lg"
           >
             Book Your Appointment Now
           </button>
