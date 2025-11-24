@@ -25,10 +25,14 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
   useEffect(() => {
     if (user) {
       loadProfile();
-    } else if (!loading) {
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!loading && !user) {
       onNavigate('auth');
     }
-  }, [user, loading, onNavigate]);
+  }, [loading, user, onNavigate]);
 
   const loadProfile = async () => {
     if (!user) return;
@@ -126,9 +130,6 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
   }
 
   if (!user || !profile) {
-    if (!loading) {
-      onNavigate('auth');
-    }
     return null;
   }
 
