@@ -69,11 +69,6 @@ export const Profile = ({ onNavigate }: ProfileProps) => {
     );
   }
 
-  if (!user) {
-    onNavigate('auth');
-    return null;
-  }
-
   if (!user || !profile) {
     onNavigate('auth');
     return null;

@@ -123,11 +123,6 @@ export const Settings = ({ onNavigate }: SettingsProps) => {
     );
   }
 
-  if (!user) {
-    onNavigate('auth');
-    return null;
-  }
-
   if (!user || !profile) {
     onNavigate('auth');
     return null;

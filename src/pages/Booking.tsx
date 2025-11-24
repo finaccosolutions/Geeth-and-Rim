@@ -46,6 +46,9 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     if (!preSelectedService) {
       loadData();
     }
+  }, []);
+
+  useEffect(() => {
     loadUserProfile();
   }, [user]);
 
@@ -222,6 +225,9 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     if (manualTimeInput && isTimeAvailable(manualTimeInput)) {
       setSelectedTime(manualTimeInput);
       setTimeError('');
+      if (user) {
+        loadUserProfile();
+      }
     } else {
       setTimeError('Please select an available time slot.');
     }
