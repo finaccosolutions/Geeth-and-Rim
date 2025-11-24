@@ -48,7 +48,9 @@ export const Booking = ({ preSelectedService, onNavigate }: BookingProps) => {
     }
   }, []);
 
-  // Removed auto-fill on mount - will auto-fill when clicking Continue after selecting time
+  useEffect(() => {
+    loadUserProfile();
+  }, [user]);
 
   const loadUserProfile = async () => {
     if (user) {
