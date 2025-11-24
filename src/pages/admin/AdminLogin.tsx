@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Lock, Mail } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 export const AdminLogin = () => {
   const [email, setEmail] = useState('');
@@ -16,6 +17,23 @@ export const AdminLogin = () => {
 
     try {
       await signIn(email, password);
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: adminUser } = await supabase
+          .from('admin_users')
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (!adminUser) {
+          await supabase.auth.signOut();
+          setError('Access denied. You are not authorized to access the admin panel.');
+          setLoading(false);
+          return;
+        }
+      }
     } catch (err) {
       setError('Invalid email or password');
     } finally {
