@@ -139,11 +139,13 @@ export const Home = ({ onNavigate }: HomeProps) => {
                           : 'shadow-lg hover:shadow-2xl hover:-translate-y-1'
                       }`}>
                         <div className="relative h-40 overflow-hidden">
-                          <img
-                            src={categoryImages[category.name] || 'https://images.pexels.com/photos/3065209/pexels-photo-3065209.jpeg?auto=compress&cs=tinysrgb&w=400'}
-                            alt={category.name}
-                            className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
-                          />
+                          {categoryImages[category.name] && (
+                            <img
+                              src={categoryImages[category.name]}
+                              alt={category.name}
+                              className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
+                            />
+                          )}
                           <div className={`absolute inset-0 transition-all duration-500 ${
                             isSelected
                               ? 'bg-gradient-to-t from-[#C17B5C]/90 via-[#C17B5C]/40 to-transparent'
