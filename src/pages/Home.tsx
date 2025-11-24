@@ -285,7 +285,7 @@ export const Home = ({ onNavigate }: HomeProps) => {
           </div>
         </div>
       </section>
-
+ 
       <section className="py-16 md:py-20 bg-[#8B9D7F]">
         <div className="w-full px-4 md:px-8">
           <div className="max-w-6xl mx-auto">
